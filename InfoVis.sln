@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfoVis", "WebApplication2\InfoVis.csproj", "{E0D7DCF3-E0F9-493D-9664-846D02282999}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C0006F17-212A-474F-983E-7DA2F91E0233} = {C0006F17-212A-474F-983E-7DA2F91E0233}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TMDbLib", "TMDbLib\TMDbLib.csproj", "{C0006F17-212A-474F-983E-7DA2F91E0233}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E0D7DCF3-E0F9-493D-9664-846D02282999}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0D7DCF3-E0F9-493D-9664-846D02282999}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0D7DCF3-E0F9-493D-9664-846D02282999}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0D7DCF3-E0F9-493D-9664-846D02282999}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0006F17-212A-474F-983E-7DA2F91E0233}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0006F17-212A-474F-983E-7DA2F91E0233}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0006F17-212A-474F-983E-7DA2F91E0233}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0006F17-212A-474F-983E-7DA2F91E0233}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
