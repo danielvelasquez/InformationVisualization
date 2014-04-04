@@ -8,7 +8,7 @@ using TMDbLib.Objects.General;
 using TMDbLib.Objects.Movies;
 using TMDbLib.Objects.Search;
 
-
+//Controller for the homepage.
 
 namespace WebApplication2.Controllers
 {
