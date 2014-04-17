@@ -16,7 +16,11 @@
     <div id="body">
         <div id="slider" style="width:800px; margin-left:20px;"></div>          
     </div>
-
+    <div class="search-wrapper cf">
+        <input id="search" type="text" placeholder="Search here..." required="">
+        <button id="sb">Search</button>
+    </div>
+    <div id="res"></div>
     @Scripts.Render("~/bundles/jquery")
     @Scripts.Render("~/bundles/ui")
     @Scripts.Render("~/bundles/knockout")
@@ -25,6 +29,42 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
+
+            $("#search").keyup(function (event) {
+                if (event.keyCode == 13) {
+                    $("#sb").click();
+                }
+            });
+            $("#sb").click(function () {
+               var text = $("#search").val();
+                $.ajax({
+                    type: "POST",
+                    url: "/Home/FindMovies",
+                    data: {
+                        key: text
+                    },
+                    success: function (movies) {
+                        console.log(movies);
+                        $.each(movies.Results, function (i, data) {
+                            var div_data =
+                            "<div class='row'>"+
+                            "<div class='poster, column'> "+ 
+                            " <a href='/movie/225747-vendetta' title=" + data.Title + "><img class='right_shadow' src='http://image.tmdb.org/t/p/w92/" + data.PosterPath + "' width='92' height='138' /></a>" +
+                            "</div>"+
+                            "<div class='info, column'>"+
+                            "<h3><a href='/movie/225747-vendetta' title=" + data.Title + "'>" + data.Title + "</a> </h3>" +
+                            "<p>Director: <a href='/person/108486-stephen-reynolds'>Stephen Reynolds</a></p>"+
+                            "<p>Writer: <a href='/person/108486-stephen-reynolds'>Stephen Reynolds</a></p>"+
+                            "<p>Starring: <a href='/person/41042-danny-dyer'>Danny Dyer</a>, <a href='/person/228969-roxanne-mckee'>Roxanne McKee</a>, <a href='/person/9831-vincent-regan'>Vincent Regan</a>, <a href='/person/43554-josef-altin'>Josef Altin</a></p>"+
+                            "</div>"
+                            "</div>"
+                             $(div_data).appendTo("#res");
+                        });
+                    },
+                    error: function (req, status, error) {
+                    }
+                });
+            });
 
             $(function () {
                 $("#datepicker").datepicker();

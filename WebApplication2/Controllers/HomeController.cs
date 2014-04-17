@@ -34,8 +34,27 @@ namespace WebApplication2.Controllers
             {
                 result.Results.InsertRange(0, client.DiscoverMovies(page: cont, sortBy: DiscoverMovieSortBy.PopularityDescending, releaseDateGreaterThan: new DateTime(min, 1, 1), releaseDateLessThan: new DateTime(max, 12, 31)).Results);
             }
-            result.Results = result.Results.OrderBy(o => o.Popularity).ToList();
+            result.Results = result.Results.OrderByDescending(o => o.Popularity).ToList();
             return Json(result, JsonRequestBehavior.AllowGet);
+        }
+        [HttpPost]
+        public JsonResult FindMovies(string key)
+        {
+            //SearchContainer<SearchKeyword> keywords = new SearchContainer<SearchKeyword>();
+            SearchContainer<SearchMovie> movies = new SearchContainer<SearchMovie>();
+            movies = client.SearchMovie(key);
+            for (int cont = 2; cont <= 15 && cont <= movies.TotalPages; cont++)
+            {
+                movies.Results.InsertRange(0, client.SearchMovie(key, page: cont).Results);
+            }
+            movies.Results = movies.Results.OrderByDescending(o => o.Popularity).ToList();
+            //keywords = client.SearchKeyword(key);
+            /*movies.Results = new List<MovieResult>();
+            for (int cont = 0; cont < keywords.Results.Count; cont++) {
+                movies.Results.InsertRange(0, client.GetKeywordMovies(keywords.Results[cont].Id).Results);
+            }*/
+            //var surprise = client.GetMovie(4652, MovieMethods.Credits);
+            return Json(movies, JsonRequestBehavior.AllowGet);
         }
     }
 }
