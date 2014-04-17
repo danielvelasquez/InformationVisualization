@@ -6,6 +6,7 @@ using TMDbLib.Client;
 using TMDbLib.Objects.Discover;
 using TMDbLib.Objects.General;
 using TMDbLib.Objects.Movies;
+using TMDbLib.Objects.People;
 using TMDbLib.Objects.Search;
 
 //Controller for the homepage.
@@ -25,7 +26,9 @@ namespace WebApplication2.Controllers
         {
             SearchContainer<SearchMovie> result = new SearchContainer<SearchMovie>();
             result.Results = new List<SearchMovie>();
+
             result = client.DiscoverMovies(page: 1, sortBy: DiscoverMovieSortBy.PopularityDescending, releaseDateGreaterThan: new DateTime(min, 1, 1), releaseDateLessThan: new DateTime(max, 12, 31));
+            var surprise = client.GetMovie(4652, MovieMethods.Credits);
 
             for (int cont = 2; cont <= 15 && cont <= result.TotalPages; cont++)
             {
