@@ -40,7 +40,6 @@ namespace WebApplication2.Controllers
         [HttpPost]
         public JsonResult FindMovies(string key)
         {
-            //SearchContainer<SearchKeyword> keywords = new SearchContainer<SearchKeyword>();
             SearchContainer<SearchMovie> movies = new SearchContainer<SearchMovie>();
             movies = client.SearchMovie(key);
             for (int cont = 2; cont <= 15 && cont <= movies.TotalPages; cont++)
@@ -48,12 +47,6 @@ namespace WebApplication2.Controllers
                 movies.Results.InsertRange(0, client.SearchMovie(key, page: cont).Results);
             }
             movies.Results = movies.Results.OrderByDescending(o => o.Popularity).ToList();
-            //keywords = client.SearchKeyword(key);
-            /*movies.Results = new List<MovieResult>();
-            for (int cont = 0; cont < keywords.Results.Count; cont++) {
-                movies.Results.InsertRange(0, client.GetKeywordMovies(keywords.Results[cont].Id).Results);
-            }*/
-            //var surprise = client.GetMovie(4652, MovieMethods.Credits);
             return Json(movies, JsonRequestBehavior.AllowGet);
         }
     }

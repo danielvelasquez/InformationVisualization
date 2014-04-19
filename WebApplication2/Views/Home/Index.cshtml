@@ -45,6 +45,7 @@
                     },
                     success: function (movies) {
                         console.log(movies);
+                        $("#res").empty();
                         $.each(movies.Results, function (i, data) {
                             var div_data =
                             "<div class='row'>"+
@@ -53,9 +54,9 @@
                             "</div>"+
                             "<div class='info, column'>"+
                             "<h3><a href='/movie/225747-vendetta' title=" + data.Title + "'>" + data.Title + "</a> </h3>" +
-                            "<p>Director: <a href='/person/108486-stephen-reynolds'>Stephen Reynolds</a></p>"+
-                            "<p>Writer: <a href='/person/108486-stephen-reynolds'>Stephen Reynolds</a></p>"+
-                            "<p>Starring: <a href='/person/41042-danny-dyer'>Danny Dyer</a>, <a href='/person/228969-roxanne-mckee'>Roxanne McKee</a>, <a href='/person/9831-vincent-regan'>Vincent Regan</a>, <a href='/person/43554-josef-altin'>Josef Altin</a></p>"+
+                            "<p><a>Popularity: " + parseFloat(data.Popularity).toFixed(2) + "</a> </p>" +
+                            "<p><a>Score: " + data.VoteAverage + "</a></p>" +
+                            "<p><a>Total votes: " + data.VoteCount + "</a></p>" +
                             "</div>"
                             "</div>"
                              $(div_data).appendTo("#res");
