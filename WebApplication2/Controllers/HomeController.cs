@@ -8,6 +8,7 @@ using TMDbLib.Objects.General;
 using TMDbLib.Objects.Movies;
 using TMDbLib.Objects.People;
 using TMDbLib.Objects.Search;
+using WebApplication2.Models;
 
 //Controller for the homepage.
 
@@ -20,6 +21,14 @@ namespace WebApplication2.Controllers
         {
             return View();
         }
+
+        public ActionResult ViewMovie(int idMovie)
+        {
+            Movie model = client.GetMovie(idMovie);
+            model.Credits = client.GetMovieCredits(idMovie);
+            return View(model);
+        }
+
         //Get changes to the timeline to update results.
         [HttpPost]
         public JsonResult SetTimeline(int min, int max)

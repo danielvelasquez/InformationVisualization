@@ -195,12 +195,27 @@ text-shadow: 0 -1px 0 rgba(0, 0, 0, .3);
 }
 .row {
   display: table-row;
+  background-color: #FFFFFF;
 }
 .column {
   display: table-cell;
   vertical-align:top;
-  margin-left:5px;
+}
+.column-text {
+  padding-left: 5px;
 }
 .info {
   padding: 0px 0px 0px 0px; 
+}
+.people {
+  padding: 0px 0px 0px 0px; 
+  width: 50%;
+}
+/*/////////////////////////////////////*/
+.homebody { 
+    width: 80%; 
+    background-color: #C8C8C8;
+    border-radius: 20px;
+    height: 90%;
+    -moz-border-radius: 20px
 }

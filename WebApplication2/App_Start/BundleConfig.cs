@@ -42,6 +42,7 @@ namespace WebApplication2
             bundles.Add(new ScriptBundle("~/bundles/ui").Include(
                  "~/Scripts/d3/d3.js",
                  "~/Scripts/d3/d3.min.js",
+                 "~/Scripts/d3/cloud.js",
                  "~/Scripts/JQRangeSlider/jQ*",
                  "~/Scripts/JQueryUI/jquery-ui*"));
 

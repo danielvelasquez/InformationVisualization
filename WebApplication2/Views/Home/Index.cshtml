@@ -1,5 +1,4 @@
 ﻿@{
-    Layout = null;
     Response.Headers["X-UA-Compatible"] = "IE=10";
 }
 <!DOCTYPE html>
@@ -9,23 +8,19 @@
     <title>Information Visualization</title>
     <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
     <meta name="viewport" content="width=device-width" />
-    @Styles.Render("~/Content/css")
-    @Scripts.Render("~/bundles/modernizr")
+
 </head>
 <body>
-    <div id="body">
-        <div id="slider" style="width:800px; margin-left:20px;"></div>          
+    <div id="body" class="homebody">
+        <div id="slider" style="width:800px; margin-left:20px;"></div>
+
+        <div class="search-wrapper cf">
+            <input id="search" type="text" placeholder="Search here..." required="">
+            <button id="sb">Search</button>
+        </div>
+        <div id="res"></div>
     </div>
-    <div class="search-wrapper cf">
-        <input id="search" type="text" placeholder="Search here..." required="">
-        <button id="sb">Search</button>
-    </div>
-    <div id="res"></div>
-    @Scripts.Render("~/bundles/jquery")
-    @Scripts.Render("~/bundles/ui")
-    @Scripts.Render("~/bundles/knockout")
-    @Scripts.Render("~/bundles/app")
-    @Scripts.Render("~/bundles/bootstrap")
+
 
     <script type="text/javascript">
         $(document).ready(function () {
@@ -52,8 +47,8 @@
                             "<div class='poster, column'> "+ 
                             " <a href='/movie/225747-vendetta' title=" + data.Title + "><img class='right_shadow' src='http://image.tmdb.org/t/p/w92/" + data.PosterPath + "' width='92' height='138' /></a>" +
                             "</div>"+
-                            "<div class='info, column'>"+
-                            "<h3><a href='/movie/225747-vendetta' title=" + data.Title + "'>" + data.Title + "</a> </h3>" +
+                            "<div class='info, column, column-text'>" +
+                            "<h3><a href='/Home/ViewMovie?idmovie="+data.Id+"' title=" + data.Title + "'>" + data.Title + "</a> </h3>" +
                             "<p><a>Popularity: " + parseFloat(data.Popularity).toFixed(2) + "</a> </p>" +
                             "<p><a>Score: " + data.VoteAverage + "</a></p>" +
                             "<p><a>Total votes: " + data.VoteCount + "</a></p>" +

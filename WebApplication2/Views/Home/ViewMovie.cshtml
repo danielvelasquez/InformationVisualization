@@ -1,0 +1,71 @@
+﻿@model TMDbLib.Objects.Movies.Movie
+@{
+    ViewBag.Title = "ViewMovie";
+}
+
+
+<h2>@Model.Id</h2>
+<div id="res">
+    <div class='row'>
+        <div class='poster, column'>
+            <img class='right_shadow' src='http://image.tmdb.org/t/p/w92/@Model.PosterPath' width='92' height='138'  />
+        </div>
+        <div class='info, column'>
+            <h3><a href='/Home/ViewMovie?idmovie=@Model.Id' title= @Model.Title>  @Model.Title</a> </h3>
+            <p><a>Popularity: @String.Format("{0:0.00}", @Model.Popularity)</a> </p>
+            <p><a>Score: @Model.VoteAverage </a></p>
+            <p><a>Total votes: @Model.VoteCount </a></p>
+
+        </div>
+     </div>
+    <div id="credits" class='people, column, column-text'>
+        <h3><a title=@Model.Title> Credits</a> </h3>
+        <p><a><h2>Cast:</h2> </a> @foreach (var item in Model.Credits.Cast)
+        {<a class="item"> @item.Name </a>} </p>
+        <p><a><h2>Crew:</h2> </a> @foreach (var item in Model.Credits.Crew)
+        {<a class="item"> @item.Name </a>} </p>
+        <p><a>Total votes: @Model.VoteCount </a></p>
+
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var data = @Html.Raw(Json.Encode(Model.Credits.Cast.ToArray()));
+        var credits = new Array();
+        for (var i=0;i<data.length;i++)
+        { 
+            credits.push(data[i].Name);
+        }
+        var fill = d3.scale.category20();
+        d3.layout.cloud().size([300, 300])
+            .words(credits.map(function (d) {
+                  return { text: d, size: 10 + Math.random() * 90 };
+              }))
+            .padding(5)
+            .rotate(function () { return ~~(0); })
+            .font("Impact")
+            .fontSize(function (d) { return d.size; })
+            .on("end", draw)
+            .start();
+        function draw(words) {
+            d3.select("#credits").append("svg")
+                .attr("width", 1200)
+                .attr("height", 300)
+              .append("g")
+                .attr("transform", "translate(150,150)")
+              .selectAll("text")
+                .data(words)
+              .enter().append("text")
+                .style("font-size", function (d) { return d.size + "px"; })
+                .style("font-family", "Impact")
+                .style("fill", function (d, i) { return fill(i); })
+                .attr("text-anchor", "middle")
+                .attr("transform", function (d) {
+                    return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+                })
+                .text(function (d) { return d.text; });
+        }
+});
+</script>
+
