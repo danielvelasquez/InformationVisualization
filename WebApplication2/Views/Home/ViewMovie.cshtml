@@ -78,7 +78,7 @@
                       .links(links)
                       .gravity(0.1)
                       .charge(-1000)
-                      .linkDistance(150)
+                      .linkDistance(50)
                       .friction(0.5)
                       //.linkStrength(function(l, i) {return 1; })
                       .size([w, h])
@@ -104,11 +104,54 @@
                     .attr("class", "node")
                     .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
                     .on("click", click)
-                    .call(force.drag);
+                    .call(force.drag)
+                    .on("mouseover", function(d,i) {
+                        if (i>0) {
+                            //CIRCLE
+                            d3.select(this).selectAll("circle")
+                            .transition()
+                            .duration(250)
+                            .attr("r", 28)
+                            .style("fill","#259286");
+
+                            //TEXT
+                            d3.select(this).select("text")
+                            .transition()
+                            .duration(250)
+                            .attr("font-size","2em")
+                            .attr("x", 15 )
+                            .attr("y", 5 )
+                        } else {
+                            //CIRCLE
+                            d3.select(this).selectAll("circle");   
+
+                            //TEXT
+                            d3.select(this).select("text");   
+                        }
+                    })
+                //MOUSEOUT
+                .on("mouseout", function(d,i) {
+                    if (i>0) {
+                        //CIRCLE
+                        d3.select(this).selectAll("circle")
+                        .transition()
+                        .duration(250)
+                        .attr("r", 18)
+                        .style("fill",color);
+
+                        //TEXT
+                        d3.select(this).select("text")
+                        .transition()
+                        .duration(250)
+                        .attr("font-size","1em")
+                        .attr("x", 8 )
+                        .attr("y", 4 )
+                    }
+                });
 
                 // Append a circle
                 nodeEnter.append("svg:circle")
-                    .attr("r", function(d) { return 20; })
+                    .attr("r", function(d) { return 18; })
                     .attr("class", function(d){return d.type;})
                     .style("fill", color);
 
@@ -238,7 +281,7 @@
                       .links(links)
                       .gravity(0.1)
                       .charge(-1000)
-                      .linkDistance(150)
+                      .linkDistance(50)
                       .friction(0.5)
                       //.linkStrength(function(l, i) {return 1; })
                       .size([w, h])
@@ -264,7 +307,50 @@
                     .attr("class", "node")
                     .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
                     .on("click", click)
-                    .call(force.drag);
+                    .call(force.drag)
+                .on("mouseover", function(d,i) {
+                    if (i>0) {
+                        //CIRCLE
+                        d3.select(this).selectAll("circle")
+                        .transition()
+                        .duration(250)
+                        .attr("r", 20)
+                        .style("fill","#259286");
+
+                        //TEXT
+                        d3.select(this).select("text")
+                        .transition()
+                        .duration(250)
+                        .attr("font-size","2em")
+                        .attr("x", 15 )
+                        .attr("y", 5 )
+                    } else {
+                        //CIRCLE
+                        d3.select(this).selectAll("circle");   
+
+                        //TEXT
+                        d3.select(this).select("text");    
+                    }
+                })
+                //MOUSEOUT
+                .on("mouseout", function(d,i) {
+                    if (i>0) {
+                        //CIRCLE
+                        d3.select(this).selectAll("circle")
+                        .transition()
+                        .duration(250)
+                        .attr("r", 10)
+                        .style("fill",color);
+
+                        //TEXT
+                        d3.select(this).select("text")
+                        .transition()
+                        .duration(250)
+                        .attr("font-size","1em")
+                        .attr("x", 8 )
+                        .attr("y", 4 )
+                    }
+                });
 
                 // Append a circle
                 nodeEnter.append("svg:circle")
@@ -279,16 +365,7 @@
                     .attr("dx", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
                     .attr("dy", ".35em")
                     .text(function(d) { return d.name; });
-
-
-                //Add an image to the node (if any)
-                /*nodeEnter.append("svg:image")
-                        .attr("xlink:href",  function(d) { return d.logo;})
-                        .attr("x", function(d) { return (0);})
-                        .attr("y", function(d) { return (0 - (d.logoheight/2)) || -16;})
-                        .attr("height", function(d) { return d.logoheight || 16;})
-                        .attr("width", function(d) { return d.logowidth || 16;});
-                */
+              
                 // Exit any old nodes.
                 node.exit().remove();
                 // Re-select for update.
@@ -313,7 +390,6 @@
 
             /**
              * Gives the coordinates of the border for keeping the nodes inside a frame
-             * http://bl.ocks.org/mbostock/1129492
              */
             function nodeTransform(d) {
                 d.x =  Math.max(maxNodeSize, Math.min(w - (d.logowidth/2 || 16), d.x));
