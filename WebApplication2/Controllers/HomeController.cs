@@ -24,11 +24,35 @@ namespace WebApplication2.Controllers
 
         public ActionResult ViewMovie(int idMovie)
         {
-            Movie model = client.GetMovie(idMovie);
-            model.Credits = client.GetMovieCredits(idMovie);
+            MovieViewModel model = new MovieViewModel();
+            model.links = new List<Link>();
+            Movie movie = client.GetMovie(idMovie);
+            movie.Credits = client.GetMovieCredits(idMovie);
+            model.movie = movie;
+            List<Link>links = getMovieCredits(movie);
+            model.links.AddRange(links);        
             return View(model);
         }
-
+        private List<Link> getMovieCredits(Movie movie) {
+            List<Link> links = new List<Link>();
+            movie.Credits = client.GetMovieCredits(movie.Id);
+            foreach (Cast member in movie.Credits.Cast)
+            {
+                Link link = new Link();
+                link.target = member.Name;
+                link.source = movie.Title;
+                links.Add(link);
+                TMDbLib.Objects.People.Credits credits = client.GetPersonCredits(member.Id);
+                foreach(MovieRole submember in credits.Cast){
+                    Link movieLink = new Link();
+                    movieLink.source = member.Name;
+                    movieLink.target = submember.Title;
+                    links.Add(movieLink);
+                }
+                
+            }
+            return links;
+        }
         //Get changes to the timeline to update results.
         [HttpPost]
         public JsonResult SetTimeline(int min, int max)

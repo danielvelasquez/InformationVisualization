@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using TMDbLib.Objects.Movies;
 
 namespace WebApplication2.Models
 {
-    public class MovieViewModel
+    public class Link
     {
-        public Movie movie;
-        public List<Link> links;
+        public string source;
+        public string target;
     }
 }
-
