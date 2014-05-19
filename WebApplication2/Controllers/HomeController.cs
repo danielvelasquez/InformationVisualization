@@ -29,15 +29,15 @@ namespace WebApplication2.Controllers
             Movie movie = client.GetMovie(idMovie);
             movie.Credits = client.GetMovieCredits(idMovie);
             model.movie = movie;
-            model.root = getMovieCredits(movie);
+            model.root = getMovieCast(movie);
+            model.rootCrew = getMovieCrew(movie);
             //model.links.AddRange(links);        
             return View(model);
         }
-        private Node getMovieCredits(Movie movie) {
-            //List<Link> links = new List<Link>();
-            //List<Node> nodes = new List<Node>();
+        private Node getMovieCast(Movie movie) {
             movie.Credits = client.GetMovieCredits(movie.Id);
-            Node root = new Node("primary", movie.Title, null);
+            Node root = new Node("root", movie.Title, null);
+            root._children = null;
             List<int> NodeIds = new List<int>();
             foreach (Cast member in movie.Credits.Cast)
             {
@@ -48,6 +48,31 @@ namespace WebApplication2.Controllers
                     if (submember.Id != movie.Id) { 
                         Node grandChild = new Node("secondary", submember.Title, null);
                         grandChild.children=null;
+                        grandChild._children = null;
+                        child.children.Add(grandChild);
+                    }
+                }
+                root.children.Add(child);
+            }
+            return root;
+        }
+        private Node getMovieCrew(Movie movie)
+        {
+            movie.Credits = client.GetMovieCredits(movie.Id);
+            Node root = new Node("root", movie.Title, null);
+            root._children = null;
+            List<int> NodeIds = new List<int>();
+            foreach (Crew member in movie.Credits.Crew)
+            {
+                Node child = new Node("primary", member.Name, null);
+                child._children = null;
+                TMDbLib.Objects.People.Credits credits = client.GetPersonCredits(member.Id);
+                foreach (MovieJob submember in credits.Crew)
+                {
+                    if (submember.Id != movie.Id)
+                    {
+                        Node grandChild = new Node("secondary", submember.Title, null);
+                        grandChild.children = null;
                         grandChild._children = null;
                         child.children.Add(grandChild);
                     }

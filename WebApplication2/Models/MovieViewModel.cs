@@ -11,6 +11,7 @@ namespace WebApplication2.Models
         public Movie movie;
         public List<Link> links;
         public Node root;
+        public Node rootCrew;
     }
 }
 

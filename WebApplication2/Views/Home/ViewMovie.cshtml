@@ -22,169 +22,355 @@
     <div id="credits" class='people, column, column-text'>
         <h3><a title=@Model.movie.Title> Credits</a> </h3>
         <p>
-            <a><h2>Cast:</h2> </a> @foreach (var item in Model.movie.Credits.Cast)
+            <a><h2 id="cast">Cast:</h2> </a> @foreach (var item in Model.movie.Credits.Cast)
             {<a class="item"> @item.Name </a>}
         </p>
         <p>
-            <a><h2>Crew:</h2> </a> @foreach (var item in Model.movie.Credits.Crew)
+            <a><h2 id="crew">Crew:</h2> </a> @foreach (var item in Model.movie.Credits.Crew)
             {<a class="item"> @item.Name </a>}
         </p>
         <p><a>Total votes: @Model.movie.VoteCount </a></p>
     </div>
     <div id="graph">
-
+    </div>
+    <div id="grCrew">
     </div>
 </div>
 
 <script type="text/javascript">
     $(document).ready(function () {
-        var root;
-        root = @Html.Raw(Json.Encode(Model.root));
-        var w = 1200,
-            h = 500,
-            maxNodeSize = 50;
-        var vis;
-        var force = d3.layout.force(); 
+        var onDisplay;
+        $("#cast").on("click", function(){
+            $("#grCrew").addClass("hidden");
+            $("#graph").removeClass("hidden");
+            showCast(); 
+            ondisplay = "cast";
+        });
+        $("#crew").on("click", function(){
+            $("#graph").addClass("hidden");
+            $("#grCrew").removeClass("hidden");
+            showCrew(); 
+            ondisplay = "crew";
+        });
+        function showCast(){
+            var root;
+            root = @Html.Raw(Json.Encode(Model.root));
+            console.log(root);
+            var w = 1200,
+                h = 800,
+                maxNodeSize = 50;
+            var vis;
+            var force = d3.layout.force();
 
-        vis = d3.select("#graph").append("svg");
- 
-        root.fixed = true;
-        root.x = w / 2;
-        root.y = 120;
-        update();
+            vis = d3.select("#graph").append("svg");
 
-        function update() {
-            var nodes = flatten(root),
-                links = d3.layout.tree().links(nodes);
- 
-            // Restart the force layout.
-            force.nodes(nodes)
-                  .links(links)
-                  //.gravity(0.1)
-                  //.charge(-1000)
-                  .linkDistance(150)
-                  .friction(0.5)
-                  //.linkStrength(function(l, i) {return 1; })
-                  .size([w, h])
-                  .on("tick", tick)
-                  .start();
- 
-            var path = vis.selectAll("path.link")
-                 .data(links, function(d) { return d.target.id; });
- 
-            path.enter().insert("svg:path")
-              .attr("class", "link")
-              .attr("marker-end", "url(#end)")
-              .style("stroke", "#ccc");
-            // Exit any old paths.
-            path.exit().remove();
-            // Update the nodes…
-            var node = vis.selectAll("g.node")
-                .data(nodes, function(d) { return d.id; });
- 
- 
-            // Enter any new nodes.
-            var nodeEnter = node.enter().append("svg:g")
-                .attr("class", "node")
-                .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-                .on("click", click)
-                .call(force.drag);
- 
-            // Append a circle
-            nodeEnter.append("svg:circle")
-                .attr("r", function(d) { return 6; })
-                .style("fill", color);
- 
-            /*
-             * Uncomment this in case you want to have text in your nodes
-             // Add text to the node (as defined by the json file) */
-             nodeEnter.append("svg:text")
-                 .attr("text-anchor", "middle")
-                 .attr("dx", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
-                 .attr("dy", ".35em")
-                 .text(function(d) { return d.name; });
-             
- 
-            //Add an image to the node (if any)
-            /*nodeEnter.append("svg:image")
-                    .attr("xlink:href",  function(d) { return d.logo;})
-                    .attr("x", function(d) { return (0);})
-                    .attr("y", function(d) { return (0 - (d.logoheight/2)) || -16;})
-                    .attr("height", function(d) { return d.logoheight || 16;})
-                    .attr("width", function(d) { return d.logowidth || 16;});
-            */
-            // Exit any old nodes.
-            node.exit().remove();
-            // Re-select for update.
-            path = vis.selectAll("path.link");
-            node = vis.selectAll("g.node");
- 
-            function tick() {
-                path.attr("d", function(d) {
-                    var dx = d.target.x - d.source.x,
-                        dy = d.target.y - d.source.y,
-                        dr = Math.sqrt(dx * dx + dy * dy);
-                    return 	"M" + d.source.x + "," 
-                           + d.source.y 
-                           + "A" + dr + "," 
-                           + dr + " 0 0,1 " 
-                           + d.target.x + "," 
-                           + d.target.y;
-                });
-                node.attr("transform", nodeTransform);    
-            }
-        }
-
-        /**
-         * Gives the coordinates of the border for keeping the nodes inside a frame
-         * http://bl.ocks.org/mbostock/1129492
-         */ 
-        function nodeTransform(d) {
-            d.x =  Math.max(maxNodeSize, Math.min(w - (d.logowidth/2 || 16), d.x));
-            d.y =  Math.max(maxNodeSize, Math.min(h - (d.logoheight/2 || 16), d.y));
-            return "translate(" + d.x + "," + d.y + ")";
-        }
- 
-        /**
-         * Color leaf nodes orange, and packages white or blue.
-         */ 
-        function color(d) {
-            return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
-        }
- 
-        /**
-         * Toggle children on click.
-         */ 
-        function click(d) {
-            if (d.children) {
-                d._children = d.children;
-                d.children = null;
-            } else {
-                d.children = d._children;
-                d._children = null;
-            }
- 
+            root.fixed = true;
+            root.x = w / 2;
+            root.y = 120;
             update();
-        }
- 
- 
-        /**
-         * Returns a list of all nodes under the root.
-         */ 
-        function flatten(root) {
-            var nodes = []; 
-            var i = 0;
- 
-            function recurse(node) {
-                if (node.children) 
-                    node.children.forEach(recurse);
-                if (!node.id) 
-                    node.id = ++i;
-                nodes.push(node);
+
+            function update() {
+                var nodes = flatten(root),
+                    links = d3.layout.tree().links(nodes);
+
+                // Restart the force layout.
+                force.nodes(nodes)
+                      .links(links)
+                      .gravity(0.1)
+                      .charge(-1000)
+                      .linkDistance(150)
+                      .friction(0.5)
+                      //.linkStrength(function(l, i) {return 1; })
+                      .size([w, h])
+                      .on("tick", tick)
+                      .start();
+
+                var path = vis.selectAll("path.link")
+                     .data(links, function(d) { return d.target.id; });
+
+                path.enter().insert("svg:path")
+                  .attr("class", "link")
+                  .attr("marker-end", "url(#end)")
+                  .style("stroke", "#ccc");
+                // Exit any old paths.
+                path.exit().remove();
+                // Update the nodes…
+                var node = vis.selectAll("g.node")
+                    .data(nodes, function(d) { return d.id; });
+
+
+                // Enter any new nodes.
+                var nodeEnter = node.enter().append("svg:g")
+                    .attr("class", "node")
+                    .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+                    .on("click", click)
+                    .call(force.drag);
+
+                // Append a circle
+                nodeEnter.append("svg:circle")
+                    .attr("r", function(d) { return 20; })
+                    .attr("class", function(d){return d.type;})
+                    .style("fill", color);
+
+                /*
+                 * Adds the text */
+                nodeEnter.append("svg:text")
+                    .attr("text-anchor", "middle")
+                    .attr("dx", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
+                    .attr("dy", ".35em")
+                    .text(function(d) { return d.name; });
+
+
+                //Add an image to the node (if any)
+                /*nodeEnter.append("svg:image")
+                        .attr("xlink:href",  function(d) { return d.logo;})
+                        .attr("x", function(d) { return (0);})
+                        .attr("y", function(d) { return (0 - (d.logoheight/2)) || -16;})
+                        .attr("height", function(d) { return d.logoheight || 16;})
+                        .attr("width", function(d) { return d.logowidth || 16;});
+                */
+                // Exit any old nodes.
+                node.exit().remove();
+                // Re-select for update.
+                path = vis.selectAll("path.link");
+                node = vis.selectAll("g.node");
+
+                function tick() {
+                    path.attr("d", function(d) {
+                        var dx = d.target.x - d.source.x,
+                            dy = d.target.y - d.source.y,
+                            dr = Math.sqrt(dx * dx + dy * dy);
+                        return 	"M" + d.source.x + ","
+                               + d.source.y
+                               + "A" + dr + ","
+                               + dr + " 0 0,1 "
+                               + d.target.x + ","
+                               + d.target.y;
+                    });
+                    node.attr("transform", nodeTransform);
+                }
             }
- 
-            recurse(root);
-            return nodes;
+
+            /**
+             * Gives the coordinates of the border for keeping the nodes inside a frame
+             * http://bl.ocks.org/mbostock/1129492
+             */
+            function nodeTransform(d) {
+                d.x =  Math.max(maxNodeSize, Math.min(w - (d.logowidth/2 || 16), d.x));
+                d.y =  Math.max(maxNodeSize, Math.min(h - (d.logoheight/2 || 16), d.y));
+                return "translate(" + d.x + "," + d.y + ")";
+            }
+
+            /**
+             * Color leaf nodes orange, and packages white or blue.
+             */
+            function color(d) {
+                return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
+            }
+
+            /**
+             * Toggle children on click.
+             */
+            function click(d) {
+                if (d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                } else {
+                    d.children = d._children;
+                    d._children = null;
+                }
+
+                update();
+            }
+
+
+            /**
+             * Returns a list of all nodes under the root.
+             */
+            function flatten(root) {
+                var nodes = [];
+                var i = 0;
+
+                function recurse(node) {
+                    if (node.children)
+                        node.children.forEach(recurse);
+                    if (!node.id)
+                        node.id = ++i;
+                    nodes.push(node);
+                }
+
+                recurse(root);
+                console.log(nodes);
+                return nodes;
+            }
+            jQuery.fn.d3Click = function () {
+                this.each(function (i, e) {
+                    var evt = document.createEvent("MouseEvents");
+                    evt.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+                    e.dispatchEvent(evt);
+                });
+            };
+            $(".primary").d3Click();
+        }
+        function showCrew(){
+            var root;
+            root = @Html.Raw(Json.Encode(Model.rootCrew));
+            console.log(root);
+            var w = 1200,
+                h = 800,
+                maxNodeSize = 50;
+            var vis;
+            var force = d3.layout.force();
+
+            vis = d3.select("#grCrew").append("svg");
+
+            root.fixed = true;
+            root.x = w / 2;
+            root.y = 120;
+            update();
+
+            function update() {
+                var nodes = flatten(root),
+                    links = d3.layout.tree().links(nodes);
+
+                // Restart the force layout.
+                force.nodes(nodes)
+                      .links(links)
+                      .gravity(0.1)
+                      .charge(-1000)
+                      .linkDistance(150)
+                      .friction(0.5)
+                      //.linkStrength(function(l, i) {return 1; })
+                      .size([w, h])
+                      .on("tick", tick)
+                      .start();
+
+                var path = vis.selectAll("path.link")
+                     .data(links, function(d) { return d.target.id; });
+
+                path.enter().insert("svg:path")
+                  .attr("class", "link")
+                  .attr("marker-end", "url(#end)")
+                  .style("stroke", "#ccc");
+                // Exit any old paths.
+                path.exit().remove();
+                // Update the nodes…
+                var node = vis.selectAll("g.node")
+                    .data(nodes, function(d) { return d.id; });
+
+
+                // Enter any new nodes.
+                var nodeEnter = node.enter().append("svg:g")
+                    .attr("class", "node")
+                    .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+                    .on("click", click)
+                    .call(force.drag);
+
+                // Append a circle
+                nodeEnter.append("svg:circle")
+                    .attr("r", function(d) { return 10; })
+                    .attr("class", function(d){return d.type;})
+                    .style("fill", color);
+
+                /*
+                 * Adds the text */
+                nodeEnter.append("svg:text")
+                    .attr("text-anchor", "middle")
+                    .attr("dx", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
+                    .attr("dy", ".35em")
+                    .text(function(d) { return d.name; });
+
+
+                //Add an image to the node (if any)
+                /*nodeEnter.append("svg:image")
+                        .attr("xlink:href",  function(d) { return d.logo;})
+                        .attr("x", function(d) { return (0);})
+                        .attr("y", function(d) { return (0 - (d.logoheight/2)) || -16;})
+                        .attr("height", function(d) { return d.logoheight || 16;})
+                        .attr("width", function(d) { return d.logowidth || 16;});
+                */
+                // Exit any old nodes.
+                node.exit().remove();
+                // Re-select for update.
+                path = vis.selectAll("path.link");
+                node = vis.selectAll("g.node");
+
+                function tick() {
+                    path.attr("d", function(d) {
+                        var dx = d.target.x - d.source.x,
+                            dy = d.target.y - d.source.y,
+                            dr = Math.sqrt(dx * dx + dy * dy);
+                        return 	"M" + d.source.x + ","
+                               + d.source.y
+                               + "A" + dr + ","
+                               + dr + " 0 0,1 "
+                               + d.target.x + ","
+                               + d.target.y;
+                    });
+                    node.attr("transform", nodeTransform);
+                }
+            }
+
+            /**
+             * Gives the coordinates of the border for keeping the nodes inside a frame
+             * http://bl.ocks.org/mbostock/1129492
+             */
+            function nodeTransform(d) {
+                d.x =  Math.max(maxNodeSize, Math.min(w - (d.logowidth/2 || 16), d.x));
+                d.y =  Math.max(maxNodeSize, Math.min(h - (d.logoheight/2 || 16), d.y));
+                return "translate(" + d.x + "," + d.y + ")";
+            }
+
+            /**
+             * Color leaf nodes orange, and packages white or blue.
+             */
+            function color(d) {
+                return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
+            }
+
+            /**
+             * Toggle children on click.
+             */
+            function click(d) {
+                if (d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                } else {
+                    d.children = d._children;
+                    d._children = null;
+                }
+
+                update();
+            }
+
+
+            /**
+             * Returns a list of all nodes under the root.
+             */
+            function flatten(root) {
+                var nodes = [];
+                var i = 0;
+
+                function recurse(node) {
+                    if (node.children)
+                        node.children.forEach(recurse);
+                    if (!node.id)
+                        node.id = ++i;
+                    nodes.push(node);
+                }
+
+                recurse(root);
+                console.log(nodes);
+                return nodes;
+            }
+            jQuery.fn.d3Click = function () {
+                this.each(function (i, e) {
+                    var evt = document.createEvent("MouseEvents");
+                    evt.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+                    e.dispatchEvent(evt);
+                });
+            };
+            $(".primary").d3Click();
         }
     });
 </script>
