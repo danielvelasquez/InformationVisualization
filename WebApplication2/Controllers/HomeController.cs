@@ -29,29 +29,32 @@ namespace WebApplication2.Controllers
             Movie movie = client.GetMovie(idMovie);
             movie.Credits = client.GetMovieCredits(idMovie);
             model.movie = movie;
-            List<Link>links = getMovieCredits(movie);
-            model.links.AddRange(links);        
+            model.root = getMovieCredits(movie);
+            //model.links.AddRange(links);        
             return View(model);
         }
-        private List<Link> getMovieCredits(Movie movie) {
-            List<Link> links = new List<Link>();
+        private Node getMovieCredits(Movie movie) {
+            //List<Link> links = new List<Link>();
+            //List<Node> nodes = new List<Node>();
             movie.Credits = client.GetMovieCredits(movie.Id);
+            Node root = new Node("primary", movie.Title, null);
+            List<int> NodeIds = new List<int>();
             foreach (Cast member in movie.Credits.Cast)
             {
-                Link link = new Link();
-                link.target = member.Name;
-                link.source = movie.Title;
-                links.Add(link);
+                Node child = new Node("primary", member.Name, null);
+                child._children = null;
                 TMDbLib.Objects.People.Credits credits = client.GetPersonCredits(member.Id);
                 foreach(MovieRole submember in credits.Cast){
-                    Link movieLink = new Link();
-                    movieLink.source = member.Name;
-                    movieLink.target = submember.Title;
-                    links.Add(movieLink);
+                    if (submember.Id != movie.Id) { 
+                        Node grandChild = new Node("secondary", submember.Title, null);
+                        grandChild.children=null;
+                        grandChild._children = null;
+                        child.children.Add(grandChild);
+                    }
                 }
-                
+                root.children.Add(child);
             }
-            return links;
+            return root;
         }
         //Get changes to the timeline to update results.
         [HttpPost]

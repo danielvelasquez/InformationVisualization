@@ -7,7 +7,14 @@ namespace WebApplication2.Models
 {
     public class Link
     {
-        public string source;
-        public string target;
+        public Node source;
+        public Node target;
+        public string type;
+        
+        /*public Link(Node source, Node target, string type) {
+            this.source = source;
+            this.target = target;
+            this.type = type;
+        }*/
     }
 }
