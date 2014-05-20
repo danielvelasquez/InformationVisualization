@@ -22,11 +22,11 @@
     <div id="credits" class='people, column, column-text'>
         <h3><a title=@Model.movie.Title> Credits</a> </h3>
         <p>
-            <a><h2 id="cast">Cast:</h2> </a> @foreach (var item in Model.movie.Credits.Cast)
+            <a><h2 id="cast" class="vis">Cast:</h2> </a> @foreach (var item in Model.movie.Credits.Cast)
             {<a class="item"> @item.Name </a>}
         </p>
         <p>
-            <a><h2 id="crew">Crew:</h2> </a> @foreach (var item in Model.movie.Credits.Crew)
+            <a><h2 id="crew" class="vis">Crew:</h2> </a> @foreach (var item in Model.movie.Credits.Crew)
             {<a class="item"> @item.Name </a>}
         </p>
         <p><a>Total votes: @Model.movie.VoteCount </a></p>
@@ -42,12 +42,14 @@
         var onDisplay;
         $("#cast").on("click", function(){
             $("#grCrew").addClass("hidden");
+            $("#grCrew").empty();
             $("#graph").removeClass("hidden");
             showCast(); 
             ondisplay = "cast";
         });
         $("#crew").on("click", function(){
             $("#graph").addClass("hidden");
+            $("#graph").empty();
             $("#grCrew").removeClass("hidden");
             showCrew(); 
             ondisplay = "crew";
@@ -55,7 +57,6 @@
         function showCast(){
             var root;
             root = @Html.Raw(Json.Encode(Model.root));
-            console.log(root);
             var w = 1200,
                 h = 800,
                 maxNodeSize = 50;
@@ -204,12 +205,7 @@
                 return "translate(" + d.x + "," + d.y + ")";
             }
 
-            /**
-             * Color leaf nodes orange, and packages white or blue.
-             */
-            function color(d) {
-                return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
-            }
+            
 
             /**
              * Toggle children on click.
@@ -222,7 +218,8 @@
                     d.children = d._children;
                     d._children = null;
                 }
-
+                d3.select(this).selectAll("circle")
+                        .style("fill",color);
                 update();
             }
 
@@ -243,7 +240,6 @@
                 }
 
                 recurse(root);
-                console.log(nodes);
                 return nodes;
             }
             jQuery.fn.d3Click = function () {
@@ -258,9 +254,8 @@
         function showCrew(){
             var root;
             root = @Html.Raw(Json.Encode(Model.rootCrew));
-            console.log(root);
             var w = 1200,
-                h = 800,
+                h = 1200,
                 maxNodeSize = 50;
             var vis;
             var force = d3.layout.force();
@@ -398,13 +393,6 @@
             }
 
             /**
-             * Color leaf nodes orange, and packages white or blue.
-             */
-            function color(d) {
-                return d._children ? "#3182bd" : d.children ? "#c6dbef" : "#fd8d3c";
-            }
-
-            /**
              * Toggle children on click.
              */
             function click(d) {
@@ -415,7 +403,8 @@
                     d.children = d._children;
                     d._children = null;
                 }
-
+                d3.select(this).selectAll("circle")
+                        .style("fill",color);
                 update();
             }
 
@@ -436,7 +425,6 @@
                 }
 
                 recurse(root);
-                console.log(nodes);
                 return nodes;
             }
             jQuery.fn.d3Click = function () {
@@ -447,6 +435,21 @@
                 });
             };
             $(".primary").d3Click();
+        }
+        /**
+             * Color leaf nodes orange, and packages white or blue.
+             */
+        function color(d) {
+            var c;
+            
+            if(d.type=="secondary"){
+                c="#fd8d3c";
+            }else if(d._children && d._children.length>0){
+                c ="#c6dbef";
+            }else {
+                c ="#3182bd";
+            }
+            return c;
         }
     });
 </script>
