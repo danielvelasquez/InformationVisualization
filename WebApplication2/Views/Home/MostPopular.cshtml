@@ -1,0 +1,476 @@
+﻿@{
+    Response.Headers["X-UA-Compatible"] = "IE=10";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Most popular</title>
+    <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+    <meta name="viewport" content="width=device-width" />
+
+</head>
+<body>
+    <div id="body">
+        <div id="slider" style="width:800px; margin-left:20px;"></div>
+    </div>
+
+    <div id="movie_view_selection" class="btn-group-movies">
+        <a href="#" id="all" class="btn active">All Movies</a>
+        <a href="#" id="year" class="btn">Rate based</a>
+        <a href="#" id="rateNyear" class="btn">Rate & Year based</a>
+    </div>
+    <br>
+    <div id="vis"></div>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            function fill_color(cat) {
+                var res;
+                if (cat == 7) {
+                    console.log("in2");
+                    res ="#d84b2a";
+                } else if (cat == 8) {
+                    console.log("in3");
+                    res= "#beccae";
+                } else {
+                    console.log("in4");
+                    res = "#7aa25c";
+                }
+                return res;
+            }
+            $(function () {
+                $("#datepicker").datepicker();
+            });
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth() + 1; //January is 0!
+            var yyyy = today.getFullYear();
+            $("#slider").dateRangeSlider({
+                formatter: function (val) {
+                    var year = val.getFullYear();
+                    return year;
+                }
+            });
+            $("#slider").dateRangeSlider("bounds", new Date(1960, 0, 1), today);
+            $("#slider").dateRangeSlider("values", new Date(1960, 0, 1), today);
+
+            
+
+            $("#slider").bind("valuesChanged", function (e, data) {
+                $.ajax({
+                    type: "POST",
+                    url: "/Home/SetTimeline",
+                    data: {
+                        min: data.values.min.getFullYear(),
+                        max: data.values.max.getFullYear()
+                    },
+                    success: function (movies) {
+                        $("#vis").empty();
+                        var tmp = movies.split("\n");
+                        tmp.pop();
+                        var myData = tmp;
+
+
+                        function addCommas(nStr) {
+                            nStr += '';
+                            x = nStr.split('.');
+                            x1 = x[0];
+                            x2 = x.length > 1 ? '.' + x[1] : '';
+                            var rgx = /(\d+)(\d{3})/;
+                            while (rgx.test(x1)) {
+                                x1 = x1.replace(rgx, '$1' + ',' + '$2');
+                            }
+                            return x1 + x2;
+                        }
+                        $('#movie_view_selection a').click(function () {
+                            var view_type = $(this).attr('id');
+                            $('#movie_view_selection a').removeClass('active');
+                            $(this).toggleClass('active');
+
+                            custom_bubble_chart.toggle_view(view_type);
+                            return false;
+                        });
+
+                        $('#view_selection a').click(function () {
+                            var view_type = $(this).attr('id');
+                            $('#view_selection a').removeClass('active');
+                            $(this).toggleClass('active');
+                            if ($(this).attr('id') != 'Movies')
+                                $(location).attr('href', "actor.html");
+                            return false;
+                        });
+                        var custom_bubble_chart = (function (d3, CustomTooltip) {
+                            "use strict";
+
+                            var width = 940,
+                                height = 600,
+                                panwidth = width + 40,
+                                panheight = height + 40,
+                                tooltip = CustomTooltip("gates_tooltip", 240),
+                                layout_gravity = -0.01,
+                                damper = 0.1,
+                                nodes = [],
+                                vis, force, circles, radius_scale;
+
+                            var center = { x: width / 2, y: height / 2 };
+
+                            var year_centers = {
+                                "7": { x: width / 4, y: height / 2 },
+                                "8": { x: width / 2, y: height / 2 },
+                                "9": { x: 3 * width / 4, y: height / 2 }
+                            };
+
+                            /*var fill_color = d3.scale.ordinal()
+                                            .domain(["7", "8", "9"])
+                                            .range(["#d84b2a", "#beccae", "#7aa25c"]);*/
+
+                            function custom_chart(data) {
+                                var max_amount = d3.max(data, function (d) { return parseInt(d.total_amount, 10); });
+
+                                radius_scale = function (input) {
+                                    var tmp = input % 13;
+                                    if (tmp < 0)
+                                        tmp = -tmp;
+                                    tmp *= 3;
+                                    return tmp;
+                                }
+
+                                //create node objects from original data
+                                //that will serve as the data behind each
+                                //bubble in the vis, then add each node
+                                //to nodes to be used later
+                                data.forEach(function (member) {
+                                    var d = {
+                                        id : member.split(",")[0],
+                                        NumOfVoters : member.split(",")[7],
+                                        value : member.split(",")[7],
+                                        image_path : member.split(",")[2],
+                                        Category : member.split(",")[8],
+                                        Rating : member.split(",")[6],
+                                        year : member.split(",")[3],
+                                        title : member.split(",")[1]
+                                    };
+
+                                    var node = {
+                                        id: d.id,
+                                        radius: radius_scale(parseInt(d.NumOfVoters, 10)),
+                                        value: d.NumOfVoters,
+                                        title: d.title,
+                                        img: d.image_path,
+                                        cat: d.Category,
+                                        rate: d.Rating,
+                                        year: d.year,
+                                        x: Math.random() * 900,
+                                        y: Math.random() * 800
+                                    };
+                                    nodes.push(node);
+                                });
+
+                                nodes.sort(function (a, b) { return b.value - a.value; });
+
+                                vis = d3.select("#vis").append("svg")
+                                            .attr("width", panwidth)
+                                            .attr("height", panheight)
+                                            .attr("id", "svg_vis")
+                                           // .attr("style", "margin-left:40px")
+                                            .attr("transform","translate(20,-20)");
+                                
+
+                                circles = vis.selectAll("circle")
+                                             .data(nodes, function (d) { return d.id; });
+
+                                circles.enter().append("circle")
+                                  .attr("r", 0)
+                                  .attr("fill", function (d) { return fill_color(d.cat); })
+                                  .attr("stroke-width", 2)
+                                  .attr("stroke", function (d) { return d3.rgb(fill_color(d.cat)).darker(); })
+                                  .attr("id", function (d) { return "bubble_" + d.id; })
+                                  .on("mouseover", function (d, i) { show_details(d, i, this); })
+                                  .on("mouseout", function (d, i) { hide_details(d, i, this); });
+
+                                circles.transition().duration(2000).attr("r", function (d) { return d.radius; });
+
+
+                            }
+
+                            function charge(d) {
+                                return -Math.pow(d.radius, 2.0) / 8;
+                            }
+
+                            function start() {
+                                force = d3.layout.force()
+                                        .nodes(nodes)
+                                        .size([width, height]);
+                            }
+
+                            function display_group_all() {
+                                force.gravity(layout_gravity)
+                                     .charge(charge)
+                                     .friction(0.9)
+                                     .on("tick", function (e) {
+                                         circles.each(move_towards_center(e.alpha))
+                                                .attr("cx", function (d) { return d.x; })
+                                                .attr("cy", function (d) { return d.y; });
+                                     });
+                                force.start();
+                                hide_years();
+                                hide_grid();
+                            }
+
+                            function move_towards_center(alpha) {
+                                return function (d) {
+                                    d.x = d.x + (center.x - d.x) * (damper + 0.02) * alpha;
+                                    d.y = d.y + (center.y - d.y) * (damper + 0.02) * alpha;
+                                };
+                            }
+
+                            function display_by_year() {
+
+                                force.gravity(layout_gravity)
+                                     .charge(charge)
+                                     .friction(0.9)
+                                    .on("tick", function (e) {
+                                        circles.each(move_towards_category(e.alpha))
+                                               .attr("cx", function (d) { return d.x; })
+                                               .attr("cy", function (d) { return d.y; });
+                                    });
+                                force.start();
+                                display_years();
+                                hide_grid();
+                            }
+
+
+                            function move_towards_category(alpha) {
+                                return function (d) {
+                                    var target = { x: 0, y: 0 };
+                                    if (d.cat == "7")
+                                        target = year_centers["7"];
+                                    if (d.cat == "8")
+                                        target = year_centers["8"];
+                                    if (d.cat == "9")
+                                        target = year_centers["9"];
+                                    d.x = d.x + (target.x - d.x) * (damper + 0.02) * alpha * 1.1;
+                                    d.y = d.y + (target.y - d.y) * (damper + 0.02) * alpha * 1.1;
+                                };
+                            }
+
+
+                            function display_years() {
+                                var years_x = { "7+": 160, "8+": width / 2, "9+": width - 160 };
+                                var years_data = d3.keys(years_x);
+                                var years = vis.selectAll(".years")
+                                           .data(years_data);
+
+                                years.enter().append("text")
+                                             .attr("class", "years")
+                                             .attr("x", function (d) { return years_x[d]; })
+                                             .attr("y", 40)
+                                             .attr("text-anchor", "middle")
+                                             .text(function (d) { return d; });
+
+                            }
+
+
+                            function move_towards_point(alpha) {
+                                return function (d) {
+                                    var destination = { x: 0, y: 0 };
+
+                                    if (d.cat == "7")
+                                        destination.y = 2 * height / 3;
+                                    if (d.cat == "8")
+                                        destination.y = height / 2;
+                                    if (d.cat == "9")
+                                        destination.y = height / 3;
+                                    destination.x = ((d.year - 1920) * width) / 100;
+
+                                    d.x = d.x + (destination.x - d.x) * (damper + 0.02) * alpha * 1.1;
+                                    d.y = d.y + (destination.y - d.y) * (damper + 0.02) * alpha * 1.1;
+                                };
+                            }
+
+
+
+
+                            function display_year_rate() {
+                                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+                                var xScale = d3.scale.linear()
+                                                  .domain([0, 10])
+                                                  .range([0, 940]);
+                                var yScale = d3.scale.linear()
+                                                  .domain([0, 4])
+                                                  .range([0, 600]);
+
+                                //define X axis
+                                var xAxis = d3.svg.axis()
+                                    .scale(xScale)
+                                    .orient("bottom")
+                                    .ticks(1)
+
+
+                                //Define Y axis
+                                var yAxis = d3.svg.axis()
+                                    .scale(yScale)
+                                    .orient("left")
+                                    .ticks(1);
+                                //.tickSize(-width, 0, 0);
+
+                                //   draw axes here
+                                vis.append("g")
+                                    .attr("class", "axis") //assign "axis" class
+                                .attr("transform", "translate(0," + (height - 5) + ")")
+                                    .call(xAxis);
+
+                                vis.append("g")
+                                    .attr("class", "axis") //assign "axis" class
+                                .attr("transform", "translate(0" + (5) + ")")
+                                    .call(yAxis);
+
+                                //Draw a grid
+                                //var numberOfTicks = 2;
+
+                                var yAxisGrid = yAxis.ticks(4)
+                                    .tickSize(width - 5, 0)
+                                    .tickFormat("")
+                                    .orient("right");
+
+                                var xAxisGrid = xAxis.ticks(10)
+                                    .tickSize(-height + 5, 0)
+                                    .tickFormat("")
+                                    .orient("top");
+
+                                vis.append("g")
+                                    .classed('y', true)
+                                    .classed('grid', true)
+                                    .call(yAxisGrid);
+
+                                vis.append("g")
+                                    .classed('x', true)
+                                    .classed('grid', true)
+                                    .call(xAxisGrid);
+
+                                var years_x = { "1930": width / 10, "1940": width / 5, "1950": 3 * width / 10, "1960": 2 * width / 5, "1970": width / 2, "1980": 3 * width / 5, "1990": 7 * width / 10, "2000": 4 * width / 5, "2010": 9 * width / 10, "2020": width };
+                                var years_data = d3.keys(years_x);
+                                var years = vis.selectAll(".axisyears")
+                                         .data(years_data);
+
+                                years.enter().append("text")
+                                           .attr("class", "axisyears")
+                                           .attr("x", function (d) { return years_x[d]; })
+                                           .attr("y", height + 30)
+                                           .attr("text-anchor", "middle")
+                                           .attr("transform", function (d) { return "rotate(0)" })
+                                           .text(function (d) { return d; });
+
+                                var rate_y = { "9+": height / 4, "8+": height / 2, "7+": 3 * height / 4 };
+                                var rate_data = d3.keys(rate_y);
+                                var rates = vis.selectAll(".axisrate")
+                                         .data(rate_data);
+
+                                rates.enter().append("text")
+                                           .attr("class", "axisrate")
+                                           .attr("x", "-10")
+                                           .attr("y", function (d) { return rate_y[d]; })
+                                           .attr("text-anchor", "middle")
+                                           .attr("transform", function (d) { return "rotate(0)" })
+                                           .text(function (d) { return d; });
+                                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                force.gravity(layout_gravity)
+                                     .charge(charge)
+                                     .friction(0.9)
+                                    .on("tick", function (e) {
+                                        circles.each(move_towards_point(e.alpha))
+                                               .attr("cx", function (d) { return d.x; })
+                                               .attr("cy", function (d) { return d.y; });
+                                    });
+                                force.start();
+                                hide_years();
+                            }
+
+                            function hide_years() {
+                                var years = vis.selectAll(".years").remove();
+
+                            }
+
+                            function hide_grid() {
+                                var axis = vis.selectAll(".axis").remove();
+                                var axis = vis.selectAll(".axisrate").remove();
+                                var grid = vis.selectAll(".axisyears").remove();
+                                var axisyesrs = vis.selectAll(".axis").remove();
+                                var x = vis.selectAll(".x").remove();
+                                var y = vis.selectAll(".y").remove();
+                            }
+
+                            // the tool tip ****************************************************************************************
+                            function show_details(data, i, element) {
+
+                                d3.select(element).attr("stroke", "black");
+                                var rate, n, f;
+                                rate = 6.6;
+                                n = Math.floor(rate);
+                                f = rate - n;
+                                var pathStarOn = "../Content/movieVis/Images/star-on.png";
+                                var pathStarHalf = "../Content/movieVis/Images/star-half.png";
+                                var pathStarOff = "../Content/movieVis/Images/star-off.png";
+                                var content = "<div class='tooltipimg'><img src=" + data.img + "alt='Cover Image' height='42' width='42'></div>";
+                                content += "<div class='tooltipcontent'><span class=\"value\"> " + data.title + "</span><br/>";
+                                content += "<span class=\"value\"> " + data.year + "</span><br/>";
+                                content += "<span class=\"value\"> " + data.rate + "/10</span><br/>";
+                                for (var i = 0; i < n; i++)
+                                    content += "<img src="+pathStarOn+" alt='star' height='10' width='10'>";
+                                if (f > 0) {
+                                    content += "<img src=" + pathStarHalf + " alt='star' height='10' width='10'>";
+                                    f = 1;
+                                }
+                                for (var i = 0; i < (10 - n - f) ; i++)
+                                    content += "<img src=" + pathStarOff + " alt='star' height='10' width='10'>";
+                                content += "<br/><span style='color:red' class=\"value\"> " + data.value + " votes</span></div>";
+                                tooltip.showTooltip(content, d3.event);
+                                $("#gates_tooltip").removeClass("hidden");
+                            }
+
+                            function hide_details(data, i, element) {
+                                $("#gates_tooltip").addClass("hidden");
+                                d3.select(element).attr("stroke", function (d) { return d3.rgb(fill_color(d.group)).darker(); });
+                                tooltip.hideTooltip();
+                            }
+
+                            var my_mod = {};
+                            my_mod.init = function (_data) {
+                                //debugger
+                                custom_chart(_data);
+                                start();
+                            };
+
+                            my_mod.display_all = display_group_all;
+                            my_mod.display_year = display_by_year;
+                            my_mod.display_year_rate = display_year_rate;
+                            my_mod.toggle_view = function (view_type) {
+                                if (view_type == 'year') {
+                                    display_by_year();
+                                } else if (view_type == 'rateNyear') {
+
+                                    display_year_rate();
+                                } else {
+                                    display_group_all();
+                                }
+                            };
+
+                            return my_mod;
+                        })(d3, CustomTooltip);
+                        custom_bubble_chart.init(myData);
+                        custom_bubble_chart.toggle_view('all');
+                    },
+
+                    error: function (req, status, error) {
+
+                    }
+                });
+            });
+            
+        });
+
+        
+    </script>
+</body>
+
+</html>

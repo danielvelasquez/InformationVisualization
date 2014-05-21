@@ -9273,3 +9273,2860 @@
     this.d3 = d3;
   }
 }();
+//////////////////PERSONALIZE///////////////////////
+(function () {
+    d3.chart = {};
+    // Inspired by http://informationandvisualization.de/blog/box-plot
+    d3.chart.box = function () {
+        var width = 1,
+            height = 1,
+            duration = 0,
+            domain = null,
+            value = Number,
+            whiskers = d3_chart_boxWhiskers,
+            quartiles = d3_chart_boxQuartiles,
+            tickFormat = null;
+
+        // For each small multiple…
+        function box(g) {
+            g.each(function (d, i) {
+                d = d.map(value).sort(d3.ascending);
+                var g = d3.select(this),
+                    n = d.length,
+                    min = d[0],
+                    max = d[n - 1];
+
+                // Compute quartiles. Must return exactly 3 elements.
+                var quartileData = d.quartiles = quartiles(d);
+
+                // Compute whiskers. Must return exactly 2 elements, or null.
+                var whiskerIndices = whiskers && whiskers.call(this, d, i),
+                    whiskerData = whiskerIndices && whiskerIndices.map(function (i) { return d[i]; });
+
+                // Compute outliers. If no whiskers are specified, all data are "outliers".
+                // We compute the outliers as indices, so that we can join across transitions!
+                var outlierIndices = whiskerIndices
+                    ? d3.range(0, whiskerIndices[0]).concat(d3.range(whiskerIndices[1] + 1, n))
+                    : d3.range(n);
+
+                // Compute the new x-scale.
+                var x1 = d3.scale.linear()
+                    .domain(domain && domain.call(this, d, i) || [min, max])
+                    .range([height, 0]);
+
+                // Retrieve the old x-scale, if this is an update.
+                var x0 = this.__chart__ || d3.scale.linear()
+                    .domain([0, Infinity])
+                    .range(x1.range());
+
+                // Stash the new scale.
+                this.__chart__ = x1;
+
+                // Note: the box, median, and box tick elements are fixed in number,
+                // so we only have to handle enter and update. In contrast, the outliers
+                // and other elements are variable, so we need to exit them! Variable
+                // elements also fade in and out.
+
+                // Update center line: the vertical line spanning the whiskers.
+                var center = g.selectAll("line.center")
+                    .data(whiskerData ? [whiskerData] : []);
+
+                center.enter().insert("svg:line", "rect")
+                    .attr("class", "center")
+                    .attr("x1", width / 2)
+                    .attr("y1", function (d) { return x0(d[0]); })
+                    .attr("x2", width / 2)
+                    .attr("y2", function (d) { return x0(d[1]); })
+                    .style("opacity", 1e-6)
+                  .transition()
+                    .duration(duration)
+                    .style("opacity", 1)
+                    .attr("y1", function (d) { return x1(d[0]); })
+                    .attr("y2", function (d) { return x1(d[1]); });
+
+                center.transition()
+                    .duration(duration)
+                    .style("opacity", 1)
+                    .attr("y1", function (d) { return x1(d[0]); })
+                    .attr("y2", function (d) { return x1(d[1]); });
+
+                center.exit().transition()
+                    .duration(duration)
+                    .style("opacity", 1e-6)
+                    .attr("y1", function (d) { return x1(d[0]); })
+                    .attr("y2", function (d) { return x1(d[1]); })
+                    .remove();
+
+                // Update innerquartile box.
+                var box = g.selectAll("rect.box")
+                    .data([quartileData]);
+
+                box.enter().append("svg:rect")
+                    .attr("class", "box")
+                    .attr("x", 0)
+                    .attr("y", function (d) { return x0(d[2]); })
+                    .attr("width", width)
+                    .attr("height", function (d) { return x0(d[0]) - x0(d[2]); })
+                  .transition()
+                    .duration(duration)
+                    .attr("y", function (d) { return x1(d[2]); })
+                    .attr("height", function (d) { return x1(d[0]) - x1(d[2]); });
+
+                box.transition()
+                    .duration(duration)
+                    .attr("y", function (d) { return x1(d[2]); })
+                    .attr("height", function (d) { return x1(d[0]) - x1(d[2]); });
+
+                // Update median line.
+                var medianLine = g.selectAll("line.median")
+                    .data([quartileData[1]]);
+
+                medianLine.enter().append("svg:line")
+                    .attr("class", "median")
+                    .attr("x1", 0)
+                    .attr("y1", x0)
+                    .attr("x2", width)
+                    .attr("y2", x0)
+                  .transition()
+                    .duration(duration)
+                    .attr("y1", x1)
+                    .attr("y2", x1);
+
+                medianLine.transition()
+                    .duration(duration)
+                    .attr("y1", x1)
+                    .attr("y2", x1);
+
+                // Update whiskers.
+                var whisker = g.selectAll("line.whisker")
+                    .data(whiskerData || []);
+
+                whisker.enter().insert("svg:line", "circle, text")
+                    .attr("class", "whisker")
+                    .attr("x1", 0)
+                    .attr("y1", x0)
+                    .attr("x2", width)
+                    .attr("y2", x0)
+                    .style("opacity", 1e-6)
+                  .transition()
+                    .duration(duration)
+                    .attr("y1", x1)
+                    .attr("y2", x1)
+                    .style("opacity", 1);
+
+                whisker.transition()
+                    .duration(duration)
+                    .attr("y1", x1)
+                    .attr("y2", x1)
+                    .style("opacity", 1);
+
+                whisker.exit().transition()
+                    .duration(duration)
+                    .attr("y1", x1)
+                    .attr("y2", x1)
+                    .style("opacity", 1e-6)
+                    .remove();
+
+                // Update outliers.
+                var outlier = g.selectAll("circle.outlier")
+                    .data(outlierIndices, Number);
+
+                outlier.enter().insert("svg:circle", "text")
+                    .attr("class", "outlier")
+                    .attr("r", 5)
+                    .attr("cx", width / 2)
+                    .attr("cy", function (i) { return x0(d[i]); })
+                    .style("opacity", 1e-6)
+                  .transition()
+                    .duration(duration)
+                    .attr("cy", function (i) { return x1(d[i]); })
+                    .style("opacity", 1);
+
+                outlier.transition()
+                    .duration(duration)
+                    .attr("cy", function (i) { return x1(d[i]); })
+                    .style("opacity", 1);
+
+                outlier.exit().transition()
+                    .duration(duration)
+                    .attr("cy", function (i) { return x1(d[i]); })
+                    .style("opacity", 1e-6)
+                    .remove();
+
+                // Compute the tick format.
+                var format = tickFormat || x1.tickFormat(8);
+
+                // Update box ticks.
+                var boxTick = g.selectAll("text.box")
+                    .data(quartileData);
+
+                boxTick.enter().append("svg:text")
+                    .attr("class", "box")
+                    .attr("dy", ".3em")
+                    .attr("dx", function (d, i) { return i & 1 ? 6 : -6 })
+                    .attr("x", function (d, i) { return i & 1 ? width : 0 })
+                    .attr("y", x0)
+                    .attr("text-anchor", function (d, i) { return i & 1 ? "start" : "end"; })
+                    .text(format)
+                  .transition()
+                    .duration(duration)
+                    .attr("y", x1);
+
+                boxTick.transition()
+                    .duration(duration)
+                    .text(format)
+                    .attr("y", x1);
+
+                // Update whisker ticks. These are handled separately from the box
+                // ticks because they may or may not exist, and we want don't want
+                // to join box ticks pre-transition with whisker ticks post-.
+                var whiskerTick = g.selectAll("text.whisker")
+                    .data(whiskerData || []);
+
+                whiskerTick.enter().append("svg:text")
+                    .attr("class", "whisker")
+                    .attr("dy", ".3em")
+                    .attr("dx", 6)
+                    .attr("x", width)
+                    .attr("y", x0)
+                    .text(format)
+                    .style("opacity", 1e-6)
+                  .transition()
+                    .duration(duration)
+                    .attr("y", x1)
+                    .style("opacity", 1);
+
+                whiskerTick.transition()
+                    .duration(duration)
+                    .text(format)
+                    .attr("y", x1)
+                    .style("opacity", 1);
+
+                whiskerTick.exit().transition()
+                    .duration(duration)
+                    .attr("y", x1)
+                    .style("opacity", 1e-6)
+                    .remove();
+            });
+            d3.timer.flush();
+        }
+
+        box.width = function (x) {
+            if (!arguments.length) return width;
+            width = x;
+            return box;
+        };
+
+        box.height = function (x) {
+            if (!arguments.length) return height;
+            height = x;
+            return box;
+        };
+
+        box.tickFormat = function (x) {
+            if (!arguments.length) return tickFormat;
+            tickFormat = x;
+            return box;
+        };
+
+        box.duration = function (x) {
+            if (!arguments.length) return duration;
+            duration = x;
+            return box;
+        };
+
+        box.domain = function (x) {
+            if (!arguments.length) return domain;
+            domain = x == null ? x : d3.functor(x);
+            return box;
+        };
+
+        box.value = function (x) {
+            if (!arguments.length) return value;
+            value = x;
+            return box;
+        };
+
+        box.whiskers = function (x) {
+            if (!arguments.length) return whiskers;
+            whiskers = x;
+            return box;
+        };
+
+        box.quartiles = function (x) {
+            if (!arguments.length) return quartiles;
+            quartiles = x;
+            return box;
+        };
+
+        return box;
+    };
+
+    function d3_chart_boxWhiskers(d) {
+        return [0, d.length - 1];
+    }
+
+    function d3_chart_boxQuartiles(d) {
+        return [
+          d3.quantile(d, .25),
+          d3.quantile(d, .5),
+          d3.quantile(d, .75)
+        ];
+    }
+    // Chart design based on the recommendations of Stephen Few. Implementation
+    // based on the work of Clint Ivy, Jamie Love, and Jason Davies.
+    // http://projects.instantcognition.com/protovis/bulletchart/
+    d3.chart.bullet = function () {
+        var orient = "left", // TODO top & bottom
+            reverse = false,
+            duration = 0,
+            ranges = d3_chart_bulletRanges,
+            markers = d3_chart_bulletMarkers,
+            measures = d3_chart_bulletMeasures,
+            width = 380,
+            height = 30,
+            tickFormat = null;
+
+        // For each small multiple…
+        function bullet(g) {
+            g.each(function (d, i) {
+                var rangez = ranges.call(this, d, i).slice().sort(d3.descending),
+                    markerz = markers.call(this, d, i).slice().sort(d3.descending),
+                    measurez = measures.call(this, d, i).slice().sort(d3.descending),
+                    g = d3.select(this);
+
+                // Compute the new x-scale.
+                var x1 = d3.scale.linear()
+                    .domain([0, Math.max(rangez[0], markerz[0], measurez[0])])
+                    .range(reverse ? [width, 0] : [0, width]);
+
+                // Retrieve the old x-scale, if this is an update.
+                var x0 = this.__chart__ || d3.scale.linear()
+                    .domain([0, Infinity])
+                    .range(x1.range());
+
+                // Stash the new scale.
+                this.__chart__ = x1;
+
+                // Derive width-scales from the x-scales.
+                var w0 = d3_chart_bulletWidth(x0),
+                    w1 = d3_chart_bulletWidth(x1);
+
+                // Update the range rects.
+                var range = g.selectAll("rect.range")
+                    .data(rangez);
+
+                range.enter().append("svg:rect")
+                    .attr("class", function (d, i) { return "range s" + i; })
+                    .attr("width", w0)
+                    .attr("height", height)
+                    .attr("x", reverse ? x0 : 0)
+                  .transition()
+                    .duration(duration)
+                    .attr("width", w1)
+                    .attr("x", reverse ? x1 : 0);
+
+                range.transition()
+                    .duration(duration)
+                    .attr("x", reverse ? x1 : 0)
+                    .attr("width", w1)
+                    .attr("height", height);
+
+                // Update the measure rects.
+                var measure = g.selectAll("rect.measure")
+                    .data(measurez);
+
+                measure.enter().append("svg:rect")
+                    .attr("class", function (d, i) { return "measure s" + i; })
+                    .attr("width", w0)
+                    .attr("height", height / 3)
+                    .attr("x", reverse ? x0 : 0)
+                    .attr("y", height / 3)
+                  .transition()
+                    .duration(duration)
+                    .attr("width", w1)
+                    .attr("x", reverse ? x1 : 0);
+
+                measure.transition()
+                    .duration(duration)
+                    .attr("width", w1)
+                    .attr("height", height / 3)
+                    .attr("x", reverse ? x1 : 0)
+                    .attr("y", height / 3);
+
+                // Update the marker lines.
+                var marker = g.selectAll("line.marker")
+                    .data(markerz);
+
+                marker.enter().append("svg:line")
+                    .attr("class", "marker")
+                    .attr("x1", x0)
+                    .attr("x2", x0)
+                    .attr("y1", height / 6)
+                    .attr("y2", height * 5 / 6)
+                  .transition()
+                    .duration(duration)
+                    .attr("x1", x1)
+                    .attr("x2", x1);
+
+                marker.transition()
+                    .duration(duration)
+                    .attr("x1", x1)
+                    .attr("x2", x1)
+                    .attr("y1", height / 6)
+                    .attr("y2", height * 5 / 6);
+
+                // Compute the tick format.
+                var format = tickFormat || x1.tickFormat(8);
+
+                // Update the tick groups.
+                var tick = g.selectAll("g.tick")
+                    .data(x1.ticks(8), function (d) {
+                        return this.textContent || format(d);
+                    });
+
+                // Initialize the ticks with the old scale, x0.
+                var tickEnter = tick.enter().append("svg:g")
+                    .attr("class", "tick")
+                    .attr("transform", d3_chart_bulletTranslate(x0))
+                    .style("opacity", 1e-6);
+
+                tickEnter.append("svg:line")
+                    .attr("y1", height)
+                    .attr("y2", height * 7 / 6);
+
+                tickEnter.append("svg:text")
+                    .attr("text-anchor", "middle")
+                    .attr("dy", "1em")
+                    .attr("y", height * 7 / 6)
+                    .text(format);
+
+                // Transition the entering ticks to the new scale, x1.
+                tickEnter.transition()
+                    .duration(duration)
+                    .attr("transform", d3_chart_bulletTranslate(x1))
+                    .style("opacity", 1);
+
+                // Transition the updating ticks to the new scale, x1.
+                var tickUpdate = tick.transition()
+                    .duration(duration)
+                    .attr("transform", d3_chart_bulletTranslate(x1))
+                    .style("opacity", 1);
+
+                tickUpdate.select("line")
+                    .attr("y1", height)
+                    .attr("y2", height * 7 / 6);
+
+                tickUpdate.select("text")
+                    .attr("y", height * 7 / 6);
+
+                // Transition the exiting ticks to the new scale, x1.
+                tick.exit().transition()
+                    .duration(duration)
+                    .attr("transform", d3_chart_bulletTranslate(x1))
+                    .style("opacity", 1e-6)
+                    .remove();
+            });
+            d3.timer.flush();
+        }
+
+        // left, right, top, bottom
+        bullet.orient = function (x) {
+            if (!arguments.length) return orient;
+            orient = x;
+            reverse = orient == "right" || orient == "bottom";
+            return bullet;
+        };
+
+        // ranges (bad, satisfactory, good)
+        bullet.ranges = function (x) {
+            if (!arguments.length) return ranges;
+            ranges = x;
+            return bullet;
+        };
+
+        // markers (previous, goal)
+        bullet.markers = function (x) {
+            if (!arguments.length) return markers;
+            markers = x;
+            return bullet;
+        };
+
+        // measures (actual, forecast)
+        bullet.measures = function (x) {
+            if (!arguments.length) return measures;
+            measures = x;
+            return bullet;
+        };
+
+        bullet.width = function (x) {
+            if (!arguments.length) return width;
+            width = x;
+            return bullet;
+        };
+
+        bullet.height = function (x) {
+            if (!arguments.length) return height;
+            height = x;
+            return bullet;
+        };
+
+        bullet.tickFormat = function (x) {
+            if (!arguments.length) return tickFormat;
+            tickFormat = x;
+            return bullet;
+        };
+
+        bullet.duration = function (x) {
+            if (!arguments.length) return duration;
+            duration = x;
+            return bullet;
+        };
+
+        return bullet;
+    };
+
+    function d3_chart_bulletRanges(d) {
+        return d.ranges;
+    }
+
+    function d3_chart_bulletMarkers(d) {
+        return d.markers;
+    }
+
+    function d3_chart_bulletMeasures(d) {
+        return d.measures;
+    }
+
+    function d3_chart_bulletTranslate(x) {
+        return function (d) {
+            return "translate(" + x(d) + ",0)";
+        };
+    }
+
+    function d3_chart_bulletWidth(x) {
+        var x0 = x(0);
+        return function (d) {
+            return Math.abs(x(d) - x0);
+        };
+    }
+    // Implements a horizon layout, which is a variation of a single-series
+    // area chart where the area is folded into multiple bands. Color is used to
+    // encode band, allowing the size of the chart to be reduced significantly
+    // without impeding readability. This layout algorithm is based on the work of
+    // J. Heer, N. Kong and M. Agrawala in "Sizing the Horizon: The Effects of Chart
+    // Size and Layering on the Graphical Perception of Time Series Visualizations",
+    // CHI 2009. http://hci.stanford.edu/publications/2009/heer-horizon-chi09.pdf
+    d3.chart.horizon = function () {
+        var bands = 1, // between 1 and 5, typically
+            mode = "offset", // or mirror
+            interpolate = "linear", // or basis, monotone, step-before, etc.
+            x = d3_chart_horizonX,
+            y = d3_chart_horizonY,
+            w = 960,
+            h = 40,
+            duration = 0;
+
+        var color = d3.scale.linear()
+            .domain([-1, 0, 1])
+            .range(["#d62728", "#fff", "#1f77b4"]);
+
+        // For each small multiple…
+        function horizon(g) {
+            g.each(function (d, i) {
+                var g = d3.select(this),
+                    n = 2 * bands + 1,
+                    xMin = Infinity,
+                    xMax = -Infinity,
+                    yMax = -Infinity,
+                    x0, // old x-scale
+                    y0, // old y-scale
+                    id; // unique id for paths
+
+                // Compute x- and y-values along with extents.
+                var data = d.map(function (d, i) {
+                    var xv = x.call(this, d, i),
+                        yv = y.call(this, d, i);
+                    if (xv < xMin) xMin = xv;
+                    if (xv > xMax) xMax = xv;
+                    if (-yv > yMax) yMax = -yv;
+                    if (yv > yMax) yMax = yv;
+                    return [xv, yv];
+                });
+
+                // Compute the new x- and y-scales.
+                var x1 = d3.scale.linear().domain([xMin, xMax]).range([0, w]),
+                    y1 = d3.scale.linear().domain([0, yMax]).range([0, h * bands]);
+
+                // Retrieve the old scales, if this is an update.
+                if (this.__chart__) {
+                    x0 = this.__chart__.x;
+                    y0 = this.__chart__.y;
+                    id = this.__chart__.id;
+                } else {
+                    x0 = d3.scale.linear().domain([0, Infinity]).range(x1.range());
+                    y0 = d3.scale.linear().domain([0, Infinity]).range(y1.range());
+                    id = ++d3_chart_horizonId;
+                }
+
+                // We'll use a defs to store the area path and the clip path.
+                var defs = g.selectAll("defs")
+                    .data([data]);
+
+                var defsEnter = defs.enter().append("svg:defs");
+
+                // The clip path is a simple rect.
+                defsEnter.append("svg:clipPath")
+                    .attr("id", "d3_chart_horizon_clip" + id)
+                  .append("svg:rect")
+                    .attr("width", w)
+                    .attr("height", h);
+
+                defs.select("rect").transition()
+                    .duration(duration)
+                    .attr("width", w)
+                    .attr("height", h);
+
+                // The area path is rendered with our resuable d3.svg.area.
+                defsEnter.append("svg:path")
+                    .attr("id", "d3_chart_horizon_path" + id)
+                    .attr("d", d3_chart_horizonArea
+                    .interpolate(interpolate)
+                    .x(function (d) { return x0(d[0]); })
+                    .y0(h * bands)
+                    .y1(function (d) { return h * bands - y0(d[1]); }))
+                  .transition()
+                    .duration(duration)
+                    .attr("d", d3_chart_horizonArea
+                    .x(function (d) { return x1(d[0]); })
+                    .y1(function (d) { return h * bands - y1(d[1]); }));
+
+                defs.select("path").transition()
+                    .duration(duration)
+                    .attr("d", d3_chart_horizonArea);
+
+                // We'll use a container to clip all horizon layers at once.
+                g.selectAll("g")
+                    .data([null])
+                  .enter().append("svg:g")
+                    .attr("clip-path", "url(#d3_chart_horizon_clip" + id + ")");
+
+                // Define the transform function based on the mode.
+                var transform = mode == "offset"
+                    ? function (d) { return "translate(0," + (d + (d < 0) - bands) * h + ")"; }
+                    : function (d) { return (d < 0 ? "scale(1,-1)" : "") + "translate(0," + (d - bands) * h + ")"; };
+
+                // Instantiate each copy of the path with different transforms.
+                var u = g.select("g").selectAll("use")
+                    .data(d3.range(-1, -bands - 1, -1).concat(d3.range(1, bands + 1)), Number);
+
+                // TODO don't fudge the enter transition
+                u.enter().append("svg:use")
+                    .attr("xlink:href", "#d3_chart_horizon_path" + id)
+                    .attr("transform", function (d) { return transform(d + (d > 0 ? 1 : -1)); })
+                    .style("fill", color)
+                  .transition()
+                    .duration(duration)
+                    .attr("transform", transform);
+
+                u.transition()
+                    .duration(duration)
+                    .attr("transform", transform)
+                    .style("fill", color);
+
+                u.exit().transition()
+                    .duration(duration)
+                    .attr("transform", transform)
+                    .remove();
+
+                // Stash the new scales.
+                this.__chart__ = { x: x1, y: y1, id: id };
+            });
+            d3.timer.flush();
+        }
+
+        horizon.duration = function (x) {
+            if (!arguments.length) return duration;
+            duration = +x;
+            return horizon;
+        };
+
+        horizon.bands = function (x) {
+            if (!arguments.length) return bands;
+            bands = +x;
+            color.domain([-bands, 0, bands]);
+            return horizon;
+        };
+
+        horizon.mode = function (x) {
+            if (!arguments.length) return mode;
+            mode = x + "";
+            return horizon;
+        };
+
+        horizon.colors = function (x) {
+            if (!arguments.length) return color.range();
+            color.range(x);
+            return horizon;
+        };
+
+        horizon.interpolate = function (x) {
+            if (!arguments.length) return interpolate;
+            interpolate = x + "";
+            return horizon;
+        };
+
+        horizon.x = function (z) {
+            if (!arguments.length) return x;
+            x = z;
+            return horizon;
+        };
+
+        horizon.y = function (z) {
+            if (!arguments.length) return y;
+            y = z;
+            return horizon;
+        };
+
+        horizon.width = function (x) {
+            if (!arguments.length) return w;
+            w = +x;
+            return horizon;
+        };
+
+        horizon.height = function (x) {
+            if (!arguments.length) return h;
+            h = +x;
+            return horizon;
+        };
+
+        return horizon;
+    };
+
+    var d3_chart_horizonArea = d3.svg.area(),
+        d3_chart_horizonId = 0;
+
+    function d3_chart_horizonX(d) {
+        return d[0];
+    }
+
+    function d3_chart_horizonY(d) {
+        return d[1];
+    }
+    // Based on http://vis.stanford.edu/protovis/ex/qqplot.html
+    d3.chart.qq = function () {
+        var width = 1,
+            height = 1,
+            duration = 0,
+            domain = null,
+            tickFormat = null,
+            n = 100,
+            x = d3_chart_qqX,
+            y = d3_chart_qqY;
+
+        // For each small multiple…
+        function qq(g) {
+            g.each(function (d, i) {
+                var g = d3.select(this),
+                    qx = d3_chart_qqQuantiles(n, x.call(this, d, i)),
+                    qy = d3_chart_qqQuantiles(n, y.call(this, d, i)),
+                    xd = domain && domain.call(this, d, i) || [d3.min(qx), d3.max(qx)], // new x-domain
+                    yd = domain && domain.call(this, d, i) || [d3.min(qy), d3.max(qy)], // new y-domain
+                    x0, // old x-scale
+                    y0; // old y-scale
+
+                // Compute the new x-scale.
+                var x1 = d3.scale.linear()
+                    .domain(xd)
+                    .range([0, width]);
+
+                // Compute the new y-scale.
+                var y1 = d3.scale.linear()
+                    .domain(yd)
+                    .range([height, 0]);
+
+                // Retrieve the old scales, if this is an update.
+                if (this.__chart__) {
+                    x0 = this.__chart__.x;
+                    y0 = this.__chart__.y;
+                } else {
+                    x0 = d3.scale.linear().domain([0, Infinity]).range(x1.range());
+                    y0 = d3.scale.linear().domain([0, Infinity]).range(y1.range());
+                }
+
+                // Stash the new scales.
+                this.__chart__ = { x: x1, y: y1 };
+
+                // Update diagonal line.
+                var diagonal = g.selectAll("line.diagonal")
+                    .data([null]);
+
+                diagonal.enter().append("svg:line")
+                    .attr("class", "diagonal")
+                    .attr("x1", x1(yd[0]))
+                    .attr("y1", y1(xd[0]))
+                    .attr("x2", x1(yd[1]))
+                    .attr("y2", y1(xd[1]));
+
+                diagonal.transition()
+                    .duration(duration)
+                    .attr("x1", x1(yd[0]))
+                    .attr("y1", y1(xd[0]))
+                    .attr("x2", x1(yd[1]))
+                    .attr("y2", y1(xd[1]));
+
+                // Update quantile plots.
+                var circle = g.selectAll("circle")
+                    .data(d3.range(n).map(function (i) {
+                        return { x: qx[i], y: qy[i] };
+                    }));
+
+                circle.enter().append("svg:circle")
+                    .attr("class", "quantile")
+                    .attr("r", 4.5)
+                    .attr("cx", function (d) { return x0(d.x); })
+                    .attr("cy", function (d) { return y0(d.y); })
+                    .style("opacity", 1e-6)
+                  .transition()
+                    .duration(duration)
+                    .attr("cx", function (d) { return x1(d.x); })
+                    .attr("cy", function (d) { return y1(d.y); })
+                    .style("opacity", 1);
+
+                circle.transition()
+                    .duration(duration)
+                    .attr("cx", function (d) { return x1(d.x); })
+                    .attr("cy", function (d) { return y1(d.y); })
+                    .style("opacity", 1);
+
+                circle.exit().transition()
+                    .duration(duration)
+                    .attr("cx", function (d) { return x1(d.x); })
+                    .attr("cy", function (d) { return y1(d.y); })
+                    .style("opacity", 1e-6)
+                    .remove();
+
+                var xformat = tickFormat || x1.tickFormat(4),
+                    yformat = tickFormat || y1.tickFormat(4),
+                    tx = function (d) { return "translate(" + x1(d) + "," + height + ")"; },
+                    ty = function (d) { return "translate(0," + y1(d) + ")"; };
+
+                // Update x-ticks.
+                var xtick = g.selectAll("g.x.tick")
+                    .data(x1.ticks(4), function (d) {
+                        return this.textContent || xformat(d);
+                    });
+
+                var xtickEnter = xtick.enter().append("svg:g")
+                    .attr("class", "x tick")
+                    .attr("transform", function (d) { return "translate(" + x0(d) + "," + height + ")"; })
+                    .style("opacity", 1e-6);
+
+                xtickEnter.append("svg:line")
+                    .attr("y1", 0)
+                    .attr("y2", -6);
+
+                xtickEnter.append("svg:text")
+                    .attr("text-anchor", "middle")
+                    .attr("dy", "1em")
+                    .text(xformat);
+
+                // Transition the entering ticks to the new scale, x1.
+                xtickEnter.transition()
+                    .duration(duration)
+                    .attr("transform", tx)
+                    .style("opacity", 1);
+
+                // Transition the updating ticks to the new scale, x1.
+                xtick.transition()
+                    .duration(duration)
+                    .attr("transform", tx)
+                    .style("opacity", 1);
+
+                // Transition the exiting ticks to the new scale, x1.
+                xtick.exit().transition()
+                    .duration(duration)
+                    .attr("transform", tx)
+                    .style("opacity", 1e-6)
+                    .remove();
+
+                // Update ticks.
+                var ytick = g.selectAll("g.y.tick")
+                    .data(y1.ticks(4), function (d) {
+                        return this.textContent || yformat(d);
+                    });
+
+                var ytickEnter = ytick.enter().append("svg:g")
+                    .attr("class", "y tick")
+                    .attr("transform", function (d) { return "translate(0," + y0(d) + ")"; })
+                    .style("opacity", 1e-6);
+
+                ytickEnter.append("svg:line")
+                    .attr("x1", 0)
+                    .attr("x2", 6);
+
+                ytickEnter.append("svg:text")
+                    .attr("text-anchor", "end")
+                    .attr("dx", "-.5em")
+                    .attr("dy", ".3em")
+                    .text(yformat);
+
+                // Transition the entering ticks to the new scale, y1.
+                ytickEnter.transition()
+                    .duration(duration)
+                    .attr("transform", ty)
+                    .style("opacity", 1);
+
+                // Transition the updating ticks to the new scale, y1.
+                ytick.transition()
+                    .duration(duration)
+                    .attr("transform", ty)
+                    .style("opacity", 1);
+
+                // Transition the exiting ticks to the new scale, y1.
+                ytick.exit().transition()
+                    .duration(duration)
+                    .attr("transform", ty)
+                    .style("opacity", 1e-6)
+                    .remove();
+            });
+        }
+
+        qq.width = function (x) {
+            if (!arguments.length) return width;
+            width = x;
+            return qq;
+        };
+
+        qq.height = function (x) {
+            if (!arguments.length) return height;
+            height = x;
+            return qq;
+        };
+
+        qq.duration = function (x) {
+            if (!arguments.length) return duration;
+            duration = x;
+            return qq;
+        };
+
+        qq.domain = function (x) {
+            if (!arguments.length) return domain;
+            domain = x == null ? x : d3.functor(x);
+            return qq;
+        };
+
+        qq.count = function (z) {
+            if (!arguments.length) return n;
+            n = z;
+            return qq;
+        };
+
+        qq.x = function (z) {
+            if (!arguments.length) return x;
+            x = z;
+            return qq;
+        };
+
+        qq.y = function (z) {
+            if (!arguments.length) return y;
+            y = z;
+            return qq;
+        };
+
+        qq.tickFormat = function (x) {
+            if (!arguments.length) return tickFormat;
+            tickFormat = x;
+            return qq;
+        };
+
+        return qq;
+    };
+
+    function d3_chart_qqQuantiles(n, values) {
+        var m = values.length - 1;
+        values = values.slice().sort(d3.ascending);
+        return d3.range(n).map(function (i) {
+            return values[~~(i * m / n)];
+        });
+    }
+
+    function d3_chart_qqX(d) {
+        return d.x;
+    }
+
+    function d3_chart_qqY(d) {
+        return d.y;
+    }
+})();
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(function () {
+    d3.csv = function (url, callback) {
+        d3.text(url, "text/csv", function (text) {
+            callback(text && d3.csv.parse(text));
+        });
+    };
+    d3.csv.parse = function (text) {
+        var header;
+        return d3.csv.parseRows(text, function (row, i) {
+            if (i) {
+                var o = {}, j = -1, m = header.length;
+                while (++j < m) o[header[j]] = row[j];
+                return o;
+            } else {
+                header = row;
+                return null;
+            }
+        });
+    };
+
+    d3.csv.parseRows = function (text, f) {
+        var EOL = {}, // sentinel value for end-of-line
+            EOF = {}, // sentinel value for end-of-file
+            rows = [], // output rows
+            re = /\r\n|[,\r\n]/g, // field separator regex
+            n = 0, // the current line number
+            t, // the current token
+            eol; // is the current token followed by EOL?
+
+        re.lastIndex = 0; // work-around bug in FF 3.6
+
+        /** @private Returns the next token. */
+        function token() {
+            if (re.lastIndex >= text.length) return EOF; // special case: end of file
+            if (eol) { eol = false; return EOL; } // special case: end of line
+
+            // special case: quotes
+            var j = re.lastIndex;
+            if (text.charCodeAt(j) === 34) {
+                var i = j;
+                while (i++ < text.length) {
+                    if (text.charCodeAt(i) === 34) {
+                        if (text.charCodeAt(i + 1) !== 34) break;
+                        i++;
+                    }
+                }
+                re.lastIndex = i + 2;
+                var c = text.charCodeAt(i + 1);
+                if (c === 13) {
+                    eol = true;
+                    if (text.charCodeAt(i + 2) === 10) re.lastIndex++;
+                } else if (c === 10) {
+                    eol = true;
+                }
+                return text.substring(j + 1, i).replace(/""/g, "\"");
+            }
+
+            // common case
+            var m = re.exec(text);
+            if (m) {
+                eol = m[0].charCodeAt(0) !== 44;
+                return text.substring(j, m.index);
+            }
+            re.lastIndex = text.length;
+            return text.substring(j);
+        }
+
+        while ((t = token()) !== EOF) {
+            var a = [];
+            while ((t !== EOL) && (t !== EOF)) {
+                a.push(t);
+                t = token();
+            }
+            if (f && !(a = f(a, n++))) continue;
+            rows.push(a);
+        }
+
+        return rows;
+    };
+    d3.csv.format = function (rows) {
+        return rows.map(d3_csv_formatRow).join("\n");
+    };
+
+    function d3_csv_formatRow(row) {
+        return row.map(d3_csv_formatValue).join(",");
+    }
+
+    function d3_csv_formatValue(text) {
+        return /[",\n]/.test(text)
+            ? "\"" + text.replace(/\"/g, "\"\"") + "\""
+            : text;
+    }
+})();
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+(function () {
+    d3.geo = {};
+
+    var d3_geo_radians = Math.PI / 180;
+    // TODO clip input coordinates on opposite hemisphere
+    d3.geo.azimuthal = function () {
+        var mode = "orthographic", // or stereographic, gnomonic, equidistant or equalarea
+            origin,
+            scale = 200,
+            translate = [480, 250],
+            x0,
+            y0,
+            cy0,
+            sy0;
+
+        function azimuthal(coordinates) {
+            var x1 = coordinates[0] * d3_geo_radians - x0,
+                y1 = coordinates[1] * d3_geo_radians,
+                cx1 = Math.cos(x1),
+                sx1 = Math.sin(x1),
+                cy1 = Math.cos(y1),
+                sy1 = Math.sin(y1),
+                cc = mode !== "orthographic" ? sy0 * sy1 + cy0 * cy1 * cx1 : null,
+                c,
+                k = mode === "stereographic" ? 1 / (1 + cc)
+                  : mode === "gnomonic" ? 1 / cc
+                  : mode === "equidistant" ? (c = Math.acos(cc), c ? c / Math.sin(c) : 0)
+                  : mode === "equalarea" ? Math.sqrt(2 / (1 + cc))
+                  : 1,
+                x = k * cy1 * sx1,
+                y = k * (sy0 * cy1 * cx1 - cy0 * sy1);
+            return [
+              scale * x + translate[0],
+              scale * y + translate[1]
+            ];
+        }
+
+        azimuthal.invert = function (coordinates) {
+            var x = (coordinates[0] - translate[0]) / scale,
+                y = (coordinates[1] - translate[1]) / scale,
+                p = Math.sqrt(x * x + y * y),
+                c = mode === "stereographic" ? 2 * Math.atan(p)
+                  : mode === "gnomonic" ? Math.atan(p)
+                  : mode === "equidistant" ? p
+                  : mode === "equalarea" ? 2 * Math.asin(.5 * p)
+                  : Math.asin(p),
+                sc = Math.sin(c),
+                cc = Math.cos(c);
+            return [
+              (x0 + Math.atan2(x * sc, p * cy0 * cc + y * sy0 * sc)) / d3_geo_radians,
+              Math.asin(cc * sy0 - (p ? (y * sc * cy0) / p : 0)) / d3_geo_radians
+            ];
+        };
+
+        azimuthal.mode = function (x) {
+            if (!arguments.length) return mode;
+            mode = x + "";
+            return azimuthal;
+        };
+
+        azimuthal.origin = function (x) {
+            if (!arguments.length) return origin;
+            origin = x;
+            x0 = origin[0] * d3_geo_radians;
+            y0 = origin[1] * d3_geo_radians;
+            cy0 = Math.cos(y0);
+            sy0 = Math.sin(y0);
+            return azimuthal;
+        };
+
+        azimuthal.scale = function (x) {
+            if (!arguments.length) return scale;
+            scale = +x;
+            return azimuthal;
+        };
+
+        azimuthal.translate = function (x) {
+            if (!arguments.length) return translate;
+            translate = [+x[0], +x[1]];
+            return azimuthal;
+        };
+
+        return azimuthal.origin([0, 0]);
+    };
+    // Derived from Tom Carden's Albers implementation for Protovis.
+    // http://gist.github.com/476238
+    // http://mathworld.wolfram.com/AlbersEqual-AreaConicProjection.html
+
+    d3.geo.albers = function () {
+        var origin = [-98, 38],
+            parallels = [29.5, 45.5],
+            scale = 1000,
+            translate = [480, 250],
+            lng0, // d3_geo_radians * origin[0]
+            n,
+            C,
+            p0;
+
+        function albers(coordinates) {
+            var t = n * (d3_geo_radians * coordinates[0] - lng0),
+                p = Math.sqrt(C - 2 * n * Math.sin(d3_geo_radians * coordinates[1])) / n;
+            return [
+              scale * p * Math.sin(t) + translate[0],
+              scale * (p * Math.cos(t) - p0) + translate[1]
+            ];
+        }
+
+        albers.invert = function (coordinates) {
+            var x = (coordinates[0] - translate[0]) / scale,
+                y = (coordinates[1] - translate[1]) / scale,
+                p0y = p0 + y,
+                t = Math.atan2(x, p0y),
+                p = Math.sqrt(x * x + p0y * p0y);
+            return [
+              (lng0 + t / n) / d3_geo_radians,
+              Math.asin((C - p * p * n * n) / (2 * n)) / d3_geo_radians
+            ];
+        };
+
+        function reload() {
+            var phi1 = d3_geo_radians * parallels[0],
+                phi2 = d3_geo_radians * parallels[1],
+                lat0 = d3_geo_radians * origin[1],
+                s = Math.sin(phi1),
+                c = Math.cos(phi1);
+            lng0 = d3_geo_radians * origin[0];
+            n = .5 * (s + Math.sin(phi2));
+            C = c * c + 2 * n * s;
+            p0 = Math.sqrt(C - 2 * n * Math.sin(lat0)) / n;
+            return albers;
+        }
+
+        albers.origin = function (x) {
+            if (!arguments.length) return origin;
+            origin = [+x[0], +x[1]];
+            return reload();
+        };
+
+        albers.parallels = function (x) {
+            if (!arguments.length) return parallels;
+            parallels = [+x[0], +x[1]];
+            return reload();
+        };
+
+        albers.scale = function (x) {
+            if (!arguments.length) return scale;
+            scale = +x;
+            return albers;
+        };
+
+        albers.translate = function (x) {
+            if (!arguments.length) return translate;
+            translate = [+x[0], +x[1]];
+            return albers;
+        };
+
+        return reload();
+    };
+
+    // A composite projection for the United States, 960x500. The set of standard
+    // parallels for each region comes from USGS, which is published here:
+    // http://egsc.usgs.gov/isb/pubs/MapProjections/projections.html#albers
+    // TODO allow the composite projection to be rescaled?
+    d3.geo.albersUsa = function () {
+        var lower48 = d3.geo.albers();
+
+        var alaska = d3.geo.albers()
+            .origin([-160, 60])
+            .parallels([55, 65]);
+
+        var hawaii = d3.geo.albers()
+            .origin([-160, 20])
+            .parallels([8, 18]);
+
+        var puertoRico = d3.geo.albers()
+            .origin([-60, 10])
+            .parallels([8, 18]);
+
+        function albersUsa(coordinates) {
+            var lon = coordinates[0],
+                lat = coordinates[1];
+            return (lat > 50 ? alaska
+                : lon < -140 ? hawaii
+                : lat < 21 ? puertoRico
+                : lower48)(coordinates);
+        }
+
+        albersUsa.scale = function (x) {
+            if (!arguments.length) return lower48.scale();
+            lower48.scale(x);
+            alaska.scale(x * .6);
+            hawaii.scale(x);
+            puertoRico.scale(x * 1.5);
+            return albersUsa.translate(lower48.translate());
+        };
+
+        albersUsa.translate = function (x) {
+            if (!arguments.length) return lower48.translate();
+            var dz = lower48.scale() / 1000,
+                dx = x[0],
+                dy = x[1];
+            lower48.translate(x);
+            alaska.translate([dx - 400 * dz, dy + 170 * dz]);
+            hawaii.translate([dx - 190 * dz, dy + 200 * dz]);
+            puertoRico.translate([dx + 580 * dz, dy + 430 * dz]);
+            return albersUsa;
+        };
+
+        return albersUsa.scale(lower48.scale());
+    };
+    d3.geo.bonne = function () {
+        var scale = 200,
+            translate = [480, 250],
+            x0, // origin longitude in radians
+            y0, // origin latitude in radians
+            y1, // parallel latitude in radians
+            c1; // cot(y1)
+
+        function bonne(coordinates) {
+            var x = coordinates[0] * d3_geo_radians - x0,
+                y = coordinates[1] * d3_geo_radians - y0;
+            if (y1) {
+                var p = c1 + y1 - y, E = x * Math.cos(y) / p;
+                x = p * Math.sin(E);
+                y = p * Math.cos(E) - c1;
+            } else {
+                x *= Math.cos(y);
+                y *= -1;
+            }
+            return [
+              scale * x + translate[0],
+              scale * y + translate[1]
+            ];
+        }
+
+        bonne.invert = function (coordinates) {
+            var x = (coordinates[0] - translate[0]) / scale,
+                y = (coordinates[1] - translate[1]) / scale;
+            if (y1) {
+                var c = c1 + y, p = Math.sqrt(x * x + c * c);
+                y = c1 + y1 - p;
+                x = x0 + p * Math.atan2(x, c) / Math.cos(y);
+            } else {
+                y *= -1;
+                x /= Math.cos(y);
+            }
+            return [
+              x / d3_geo_radians,
+              y / d3_geo_radians
+            ];
+        };
+
+        // 90° for Werner, 0° for Sinusoidal
+        bonne.parallel = function (x) {
+            if (!arguments.length) return y1 / d3_geo_radians;
+            c1 = 1 / Math.tan(y1 = x * d3_geo_radians);
+            return bonne;
+        };
+
+        bonne.origin = function (x) {
+            if (!arguments.length) return [x0 / d3_geo_radians, y0 / d3_geo_radians];
+            x0 = x[0] * d3_geo_radians;
+            y0 = x[1] * d3_geo_radians;
+            return bonne;
+        };
+
+        bonne.scale = function (x) {
+            if (!arguments.length) return scale;
+            scale = +x;
+            return bonne;
+        };
+
+        bonne.translate = function (x) {
+            if (!arguments.length) return translate;
+            translate = [+x[0], +x[1]];
+            return bonne;
+        };
+
+        return bonne.origin([0, 0]).parallel(45);
+    };
+    d3.geo.equirectangular = function () {
+        var scale = 500,
+            translate = [480, 250];
+
+        function equirectangular(coordinates) {
+            var x = coordinates[0] / 360,
+                y = -coordinates[1] / 360;
+            return [
+              scale * x + translate[0],
+              scale * y + translate[1]
+            ];
+        }
+
+        equirectangular.invert = function (coordinates) {
+            var x = (coordinates[0] - translate[0]) / scale,
+                y = (coordinates[1] - translate[1]) / scale;
+            return [
+              360 * x,
+              -360 * y
+            ];
+        };
+
+        equirectangular.scale = function (x) {
+            if (!arguments.length) return scale;
+            scale = +x;
+            return equirectangular;
+        };
+
+        equirectangular.translate = function (x) {
+            if (!arguments.length) return translate;
+            translate = [+x[0], +x[1]];
+            return equirectangular;
+        };
+
+        return equirectangular;
+    };
+    d3.geo.mercator = function () {
+        var scale = 500,
+            translate = [480, 250];
+
+        function mercator(coordinates) {
+            var x = coordinates[0] / 360,
+                y = -(Math.log(Math.tan(Math.PI / 4 + coordinates[1] * d3_geo_radians / 2)) / d3_geo_radians) / 360;
+            return [
+              scale * x + translate[0],
+              scale * Math.max(-.5, Math.min(.5, y)) + translate[1]
+            ];
+        }
+
+        mercator.invert = function (coordinates) {
+            var x = (coordinates[0] - translate[0]) / scale,
+                y = (coordinates[1] - translate[1]) / scale;
+            return [
+              360 * x,
+              2 * Math.atan(Math.exp(-360 * y * d3_geo_radians)) / d3_geo_radians - 90
+            ];
+        };
+
+        mercator.scale = function (x) {
+            if (!arguments.length) return scale;
+            scale = +x;
+            return mercator;
+        };
+
+        mercator.translate = function (x) {
+            if (!arguments.length) return translate;
+            translate = [+x[0], +x[1]];
+            return mercator;
+        };
+
+        return mercator;
+    };
+    function d3_geo_type(types, defaultValue) {
+        return function (object) {
+            return object && object.type in types ? types[object.type](object) : defaultValue;
+        };
+    }
+    /**
+     * Returns a function that, given a GeoJSON object (e.g., a feature), returns
+     * the corresponding SVG path. The function can be customized by overriding the
+     * projection. Point features are mapped to circles with a default radius of
+     * 4.5px; the radius can be specified either as a constant or a function that
+     * is evaluated per object.
+     */
+    d3.geo.path = function () {
+        var pointRadius = 4.5,
+            pointCircle = d3_path_circle(pointRadius),
+            projection = d3.geo.albersUsa();
+
+        function path(d, i) {
+            if (typeof pointRadius === "function") {
+                pointCircle = d3_path_circle(pointRadius.apply(this, arguments));
+            }
+            return pathType(d) || null;
+        }
+
+        function project(coordinates) {
+            return projection(coordinates).join(",");
+        }
+
+        var pathType = d3_geo_type({
+
+            FeatureCollection: function (o) {
+                var path = [],
+                    features = o.features,
+                    i = -1, // features.index
+                    n = features.length;
+                while (++i < n) path.push(pathType(features[i].geometry));
+                return path.join("");
+            },
+
+            Feature: function (o) {
+                return pathType(o.geometry);
+            },
+
+            Point: function (o) {
+                return "M" + project(o.coordinates) + pointCircle;
+            },
+
+            MultiPoint: function (o) {
+                var path = [],
+                    coordinates = o.coordinates,
+                    i = -1, // coordinates.index
+                    n = coordinates.length;
+                while (++i < n) path.push("M", project(coordinates[i]), pointCircle);
+                return path.join("");
+            },
+
+            LineString: function (o) {
+                var path = ["M"],
+                    coordinates = o.coordinates,
+                    i = -1, // coordinates.index
+                    n = coordinates.length;
+                while (++i < n) path.push(project(coordinates[i]), "L");
+                path.pop();
+                return path.join("");
+            },
+
+            MultiLineString: function (o) {
+                var path = [],
+                    coordinates = o.coordinates,
+                    i = -1, // coordinates.index
+                    n = coordinates.length,
+                    subcoordinates, // coordinates[i]
+                    j, // subcoordinates.index
+                    m; // subcoordinates.length
+                while (++i < n) {
+                    subcoordinates = coordinates[i];
+                    j = -1;
+                    m = subcoordinates.length;
+                    path.push("M");
+                    while (++j < m) path.push(project(subcoordinates[j]), "L");
+                    path.pop();
+                }
+                return path.join("");
+            },
+
+            Polygon: function (o) {
+                var path = [],
+                    coordinates = o.coordinates,
+                    i = -1, // coordinates.index
+                    n = coordinates.length,
+                    subcoordinates, // coordinates[i]
+                    j, // subcoordinates.index
+                    m; // subcoordinates.length
+                while (++i < n) {
+                    subcoordinates = coordinates[i];
+                    j = -1;
+                    if ((m = subcoordinates.length - 1) > 0) {
+                        path.push("M");
+                        while (++j < m) path.push(project(subcoordinates[j]), "L");
+                        path[path.length - 1] = "Z";
+                    }
+                }
+                return path.join("");
+            },
+
+            MultiPolygon: function (o) {
+                var path = [],
+                    coordinates = o.coordinates,
+                    i = -1, // coordinates index
+                    n = coordinates.length,
+                    subcoordinates, // coordinates[i]
+                    j, // subcoordinates index
+                    m, // subcoordinates.length
+                    subsubcoordinates, // subcoordinates[j]
+                    k, // subsubcoordinates index
+                    p; // subsubcoordinates.length
+                while (++i < n) {
+                    subcoordinates = coordinates[i];
+                    j = -1;
+                    m = subcoordinates.length;
+                    while (++j < m) {
+                        subsubcoordinates = subcoordinates[j];
+                        k = -1;
+                        if ((p = subsubcoordinates.length - 1) > 0) {
+                            path.push("M");
+                            while (++k < p) path.push(project(subsubcoordinates[k]), "L");
+                            path[path.length - 1] = "Z";
+                        }
+                    }
+                }
+                return path.join("");
+            },
+
+            GeometryCollection: function (o) {
+                var path = [],
+                    geometries = o.geometries,
+                    i = -1, // geometries index
+                    n = geometries.length;
+                while (++i < n) path.push(pathType(geometries[i]));
+                return path.join("");
+            }
+
+        });
+
+        var areaType = path.area = d3_geo_type({
+
+            FeatureCollection: function (o) {
+                var area = 0,
+                    features = o.features,
+                    i = -1, // features.index
+                    n = features.length;
+                while (++i < n) area += areaType(features[i]);
+                return area;
+            },
+
+            Feature: function (o) {
+                return areaType(o.geometry);
+            },
+
+            Polygon: function (o) {
+                return polygonArea(o.coordinates);
+            },
+
+            MultiPolygon: function (o) {
+                var sum = 0,
+                    coordinates = o.coordinates,
+                    i = -1, // coordinates index
+                    n = coordinates.length;
+                while (++i < n) sum += polygonArea(coordinates[i]);
+                return sum;
+            },
+
+            GeometryCollection: function (o) {
+                var sum = 0,
+                    geometries = o.geometries,
+                    i = -1, // geometries index
+                    n = geometries.length;
+                while (++i < n) sum += areaType(geometries[i]);
+                return sum;
+            }
+
+        }, 0);
+
+        function polygonArea(coordinates) {
+            var sum = area(coordinates[0]), // exterior ring
+                i = 0, // coordinates.index
+                n = coordinates.length;
+            while (++i < n) sum -= area(coordinates[i]); // holes
+            return sum;
+        }
+
+        function polygonCentroid(coordinates) {
+            var polygon = d3.geom.polygon(coordinates[0].map(projection)), // exterior ring
+                area = polygon.area(),
+                centroid = polygon.centroid(area < 0 ? (area *= -1, 1) : -1),
+                x = centroid[0],
+                y = centroid[1],
+                z = area,
+                i = 0, // coordinates index
+                n = coordinates.length;
+            while (++i < n) {
+                polygon = d3.geom.polygon(coordinates[i].map(projection)); // holes
+                area = polygon.area();
+                centroid = polygon.centroid(area < 0 ? (area *= -1, 1) : -1);
+                x -= centroid[0];
+                y -= centroid[1];
+                z -= area;
+            }
+            return [x, y, 6 * z]; // weighted centroid
+        }
+
+        var centroidType = path.centroid = d3_geo_type({
+
+            // TODO FeatureCollection
+            // TODO Point
+            // TODO MultiPoint
+            // TODO LineString
+            // TODO MultiLineString
+            // TODO GeometryCollection
+
+            Feature: function (o) {
+                return centroidType(o.geometry);
+            },
+
+            Polygon: function (o) {
+                var centroid = polygonCentroid(o.coordinates);
+                return [centroid[0] / centroid[2], centroid[1] / centroid[2]];
+            },
+
+            MultiPolygon: function (o) {
+                var area = 0,
+                    coordinates = o.coordinates,
+                    centroid,
+                    x = 0,
+                    y = 0,
+                    z = 0,
+                    i = -1, // coordinates index
+                    n = coordinates.length;
+                while (++i < n) {
+                    centroid = polygonCentroid(coordinates[i]);
+                    x += centroid[0];
+                    y += centroid[1];
+                    z += centroid[2];
+                }
+                return [x / z, y / z];
+            }
+
+        });
+
+        function area(coordinates) {
+            return Math.abs(d3.geom.polygon(coordinates.map(projection)).area());
+        }
+
+        path.projection = function (x) {
+            projection = x;
+            return path;
+        };
+
+        path.pointRadius = function (x) {
+            if (typeof x === "function") pointRadius = x;
+            else {
+                pointRadius = +x;
+                pointCircle = d3_path_circle(pointRadius);
+            }
+            return path;
+        };
+
+        return path;
+    };
+
+    function d3_path_circle(radius) {
+        return "m0," + radius
+            + "a" + radius + "," + radius + " 0 1,1 0," + (-2 * radius)
+            + "a" + radius + "," + radius + " 0 1,1 0," + (+2 * radius)
+            + "z";
+    }
+    /**
+     * Given a GeoJSON object, returns the corresponding bounding box. The bounding
+     * box is represented by a two-dimensional array: [[left, bottom], [right,
+     * top]], where left is the minimum longitude, bottom is the minimum latitude,
+     * right is maximum longitude, and top is the maximum latitude.
+     */
+    d3.geo.bounds = function (feature) {
+        var left = Infinity,
+            bottom = Infinity,
+            right = -Infinity,
+            top = -Infinity;
+        d3_geo_bounds(feature, function (x, y) {
+            if (x < left) left = x;
+            if (x > right) right = x;
+            if (y < bottom) bottom = y;
+            if (y > top) top = y;
+        });
+        return [[left, bottom], [right, top]];
+    };
+
+    function d3_geo_bounds(o, f) {
+        if (o.type in d3_geo_boundsTypes) d3_geo_boundsTypes[o.type](o, f);
+    }
+
+    var d3_geo_boundsTypes = {
+        Feature: d3_geo_boundsFeature,
+        FeatureCollection: d3_geo_boundsFeatureCollection,
+        GeometryCollection: d3_geo_boundsGeometryCollection,
+        LineString: d3_geo_boundsLineString,
+        MultiLineString: d3_geo_boundsMultiLineString,
+        MultiPoint: d3_geo_boundsLineString,
+        MultiPolygon: d3_geo_boundsMultiPolygon,
+        Point: d3_geo_boundsPoint,
+        Polygon: d3_geo_boundsPolygon
+    };
+
+    function d3_geo_boundsFeature(o, f) {
+        d3_geo_bounds(o.geometry, f);
+    }
+
+    function d3_geo_boundsFeatureCollection(o, f) {
+        for (var a = o.features, i = 0, n = a.length; i < n; i++) {
+            d3_geo_bounds(a[i].geometry, f);
+        }
+    }
+
+    function d3_geo_boundsGeometryCollection(o, f) {
+        for (var a = o.geometries, i = 0, n = a.length; i < n; i++) {
+            d3_geo_bounds(a[i], f);
+        }
+    }
+
+    function d3_geo_boundsLineString(o, f) {
+        for (var a = o.coordinates, i = 0, n = a.length; i < n; i++) {
+            f.apply(null, a[i]);
+        }
+    }
+
+    function d3_geo_boundsMultiLineString(o, f) {
+        for (var a = o.coordinates, i = 0, n = a.length; i < n; i++) {
+            for (var b = a[i], j = 0, m = b.length; j < m; j++) {
+                f.apply(null, b[j]);
+            }
+        }
+    }
+
+    function d3_geo_boundsMultiPolygon(o, f) {
+        for (var a = o.coordinates, i = 0, n = a.length; i < n; i++) {
+            for (var b = a[i][0], j = 0, m = b.length; j < m; j++) {
+                f.apply(null, b[j]);
+            }
+        }
+    }
+
+    function d3_geo_boundsPoint(o, f) {
+        f.apply(null, o.coordinates);
+    }
+
+    function d3_geo_boundsPolygon(o, f) {
+        for (var a = o.coordinates[0], i = 0, n = a.length; i < n; i++) {
+            f.apply(null, a[i]);
+        }
+    }
+    // TODO breakAtDateLine?
+
+    d3.geo.circle = function () {
+        var origin = [0, 0],
+            degrees = 90 - 1e-2,
+            radians = degrees * d3_geo_radians,
+            arc = d3.geo.greatArc().target(Object);
+
+        function circle() {
+            // TODO render a circle as a Polygon
+        }
+
+        function visible(point) {
+            return arc.distance(point) < radians;
+        }
+
+        circle.clip = function (d) {
+            arc.source(typeof origin === "function" ? origin.apply(this, arguments) : origin);
+            return clipType(d);
+        };
+
+        var clipType = d3_geo_type({
+
+            FeatureCollection: function (o) {
+                var features = o.features.map(clipType).filter(Object);
+                return features && (o = Object.create(o), o.features = features, o);
+            },
+
+            Feature: function (o) {
+                var geometry = clipType(o.geometry);
+                return geometry && (o = Object.create(o), o.geometry = geometry, o);
+            },
+
+            Point: function (o) {
+                return visible(o.coordinates) && o;
+            },
+
+            MultiPoint: function (o) {
+                var coordinates = o.coordinates.filter(visible);
+                return coordinates.length && {
+                    type: o.type,
+                    coordinates: coordinates
+                };
+            },
+
+            LineString: function (o) {
+                var coordinates = clip(o.coordinates);
+                return coordinates.length && (o = Object.create(o), o.coordinates = coordinates, o);
+            },
+
+            MultiLineString: function (o) {
+                var coordinates = o.coordinates.map(clip).filter(function (d) { return d.length; });
+                return coordinates.length && (o = Object.create(o), o.coordinates = coordinates, o);
+            },
+
+            Polygon: function (o) {
+                var coordinates = o.coordinates.map(clip);
+                return coordinates[0].length && (o = Object.create(o), o.coordinates = coordinates, o);
+            },
+
+            MultiPolygon: function (o) {
+                var coordinates = o.coordinates.map(function (d) { return d.map(clip); }).filter(function (d) { return d[0].length; });
+                return coordinates.length && (o = Object.create(o), o.coordinates = coordinates, o);
+            },
+
+            GeometryCollection: function (o) {
+                var geometries = o.geometries.map(clipType).filter(Object);
+                return geometries.length && (o = Object.create(o), o.geometries = geometries, o);
+            }
+
+        });
+
+        function clip(coordinates) {
+            var i = -1,
+                n = coordinates.length,
+                clipped = [],
+                p0,
+                p1,
+                p2,
+                d0,
+                d1;
+
+            while (++i < n) {
+                d1 = arc.distance(p2 = coordinates[i]);
+                if (d1 < radians) {
+                    if (p1) clipped.push(d3_geo_greatArcInterpolate(p1, p2)((d0 - radians) / (d0 - d1)));
+                    clipped.push(p2);
+                    p0 = p1 = null;
+                } else {
+                    p1 = p2;
+                    if (!p0 && clipped.length) {
+                        clipped.push(d3_geo_greatArcInterpolate(clipped[clipped.length - 1], p1)((radians - d0) / (d1 - d0)));
+                        p0 = p1;
+                    }
+                }
+                d0 = d1;
+            }
+
+            if (p1 && clipped.length) {
+                d1 = arc.distance(p2 = clipped[0]);
+                clipped.push(d3_geo_greatArcInterpolate(p1, p2)((d0 - radians) / (d0 - d1)));
+            }
+
+            return resample(clipped);
+        }
+
+        // Resample coordinates, creating great arcs between each.
+        function resample(coordinates) {
+            var i = 0,
+                n = coordinates.length,
+                j,
+                m,
+                resampled = n ? [coordinates[0]] : coordinates,
+                resamples,
+                origin = arc.source();
+
+            while (++i < n) {
+                resamples = arc.source(coordinates[i - 1])(coordinates[i]).coordinates;
+                for (j = 0, m = resamples.length; ++j < m;) resampled.push(resamples[j]);
+            }
+
+            arc.source(origin);
+            return resampled;
+        }
+
+        circle.origin = function (x) {
+            if (!arguments.length) return origin;
+            origin = x;
+            return circle;
+        };
+
+        circle.angle = function (x) {
+            if (!arguments.length) return degrees;
+            radians = (degrees = +x) * d3_geo_radians;
+            return circle;
+        };
+
+        // Precision is specified in degrees.
+        circle.precision = function (x) {
+            if (!arguments.length) return arc.precision();
+            arc.precision(x);
+            return circle;
+        };
+
+        return circle;
+    }
+    d3.geo.greatArc = function () {
+        var source = d3_geo_greatArcSource,
+            target = d3_geo_greatArcTarget,
+            precision = 6 * d3_geo_radians;
+
+        function greatArc() {
+            var a = typeof source === "function" ? source.apply(this, arguments) : source,
+                b = typeof target === "function" ? target.apply(this, arguments) : target,
+                i = d3_geo_greatArcInterpolate(a, b),
+                dt = precision / i.d,
+                t = 0,
+                coordinates = [a];
+            while ((t += dt) < 1) coordinates.push(i(t));
+            coordinates.push(b);
+            return {
+                type: "LineString",
+                coordinates: coordinates
+            };
+        }
+
+        // Length returned in radians; multiply by radius for distance.
+        greatArc.distance = function () {
+            var a = typeof source === "function" ? source.apply(this, arguments) : source,
+                b = typeof target === "function" ? target.apply(this, arguments) : target;
+            return d3_geo_greatArcInterpolate(a, b).d;
+        };
+
+        greatArc.source = function (x) {
+            if (!arguments.length) return source;
+            source = x;
+            return greatArc;
+        };
+
+        greatArc.target = function (x) {
+            if (!arguments.length) return target;
+            target = x;
+            return greatArc;
+        };
+
+        // Precision is specified in degrees.
+        greatArc.precision = function (x) {
+            if (!arguments.length) return precision / d3_geo_radians;
+            precision = x * d3_geo_radians;
+            return greatArc;
+        };
+
+        return greatArc;
+    };
+
+    function d3_geo_greatArcSource(d) {
+        return d.source;
+    }
+
+    function d3_geo_greatArcTarget(d) {
+        return d.target;
+    }
+
+    function d3_geo_greatArcInterpolate(a, b) {
+        var x0 = a[0] * d3_geo_radians, cx0 = Math.cos(x0), sx0 = Math.sin(x0),
+            y0 = a[1] * d3_geo_radians, cy0 = Math.cos(y0), sy0 = Math.sin(y0),
+            x1 = b[0] * d3_geo_radians, cx1 = Math.cos(x1), sx1 = Math.sin(x1),
+            y1 = b[1] * d3_geo_radians, cy1 = Math.cos(y1), sy1 = Math.sin(y1),
+            d = interpolate.d = Math.acos(Math.max(-1, Math.min(1, sy0 * sy1 + cy0 * cy1 * Math.cos(x1 - x0)))),
+            sd = Math.sin(d);
+
+        // From http://williams.best.vwh.net/avform.htm#Intermediate
+        function interpolate(t) {
+            var A = Math.sin(d - (t *= d)) / sd,
+                B = Math.sin(t) / sd,
+                x = A * cy0 * cx0 + B * cy1 * cx1,
+                y = A * cy0 * sx0 + B * cy1 * sx1,
+                z = A * sy0 + B * sy1;
+            return [
+              Math.atan2(y, x) / d3_geo_radians,
+              Math.atan2(z, Math.sqrt(x * x + y * y)) / d3_geo_radians
+            ];
+        }
+
+        return interpolate;
+    }
+    d3.geo.greatCircle = d3.geo.circle;
+})();
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+(function () {
+    d3.geom = {};
+    /**
+     * Computes a contour for a given input grid function using the <a
+     * href="http://en.wikipedia.org/wiki/Marching_squares">marching
+     * squares</a> algorithm. Returns the contour polygon as an array of points.
+     *
+     * @param grid a two-input function(x, y) that returns true for values
+     * inside the contour and false for values outside the contour.
+     * @param start an optional starting point [x, y] on the grid.
+     * @returns polygon [[x1, y1], [x2, y2], …]
+     */
+    d3.geom.contour = function (grid, start) {
+        var s = start || d3_geom_contourStart(grid), // starting point
+            c = [],    // contour polygon
+            x = s[0],  // current x position
+            y = s[1],  // current y position
+            dx = 0,    // next x direction
+            dy = 0,    // next y direction
+            pdx = NaN, // previous x direction
+            pdy = NaN, // previous y direction
+            i = 0;
+
+        do {
+            // determine marching squares index
+            i = 0;
+            if (grid(x - 1, y - 1)) i += 1;
+            if (grid(x, y - 1)) i += 2;
+            if (grid(x - 1, y)) i += 4;
+            if (grid(x, y)) i += 8;
+
+            // determine next direction
+            if (i === 6) {
+                dx = pdy === -1 ? -1 : 1;
+                dy = 0;
+            } else if (i === 9) {
+                dx = 0;
+                dy = pdx === 1 ? -1 : 1;
+            } else {
+                dx = d3_geom_contourDx[i];
+                dy = d3_geom_contourDy[i];
+            }
+
+            // update contour polygon
+            if (dx != pdx && dy != pdy) {
+                c.push([x, y]);
+                pdx = dx;
+                pdy = dy;
+            }
+
+            x += dx;
+            y += dy;
+        } while (s[0] != x || s[1] != y);
+
+        return c;
+    };
+
+    // lookup tables for marching directions
+    var d3_geom_contourDx = [1, 0, 1, 1, -1, 0, -1, 1, 0, 0, 0, 0, -1, 0, -1, NaN],
+        d3_geom_contourDy = [0, -1, 0, 0, 0, -1, 0, 0, 1, -1, 1, 1, 0, -1, 0, NaN];
+
+    function d3_geom_contourStart(grid) {
+        var x = 0,
+            y = 0;
+
+        // search for a starting point; begin at origin
+        // and proceed along outward-expanding diagonals
+        while (true) {
+            if (grid(x, y)) {
+                return [x, y];
+            }
+            if (x === 0) {
+                x = y + 1;
+                y = 0;
+            } else {
+                x = x - 1;
+                y = y + 1;
+            }
+        }
+    }
+    /**
+     * Computes the 2D convex hull of a set of points using Graham's scanning
+     * algorithm. The algorithm has been implemented as described in Cormen,
+     * Leiserson, and Rivest's Introduction to Algorithms. The running time of
+     * this algorithm is O(n log n), where n is the number of input points.
+     *
+     * @param vertices [[x1, y1], [x2, y2], …]
+     * @returns polygon [[x1, y1], [x2, y2], …]
+     */
+    d3.geom.hull = function (vertices) {
+        if (vertices.length < 3) return [];
+
+        var len = vertices.length,
+            plen = len - 1,
+            points = [],
+            stack = [],
+            i, j, h = 0, x1, y1, x2, y2, u, v, a, sp;
+
+        // find the starting ref point: leftmost point with the minimum y coord
+        for (i = 1; i < len; ++i) {
+            if (vertices[i][1] < vertices[h][1]) {
+                h = i;
+            } else if (vertices[i][1] == vertices[h][1]) {
+                h = (vertices[i][0] < vertices[h][0] ? i : h);
+            }
+        }
+
+        // calculate polar angles from ref point and sort
+        for (i = 0; i < len; ++i) {
+            if (i === h) continue;
+            y1 = vertices[i][1] - vertices[h][1];
+            x1 = vertices[i][0] - vertices[h][0];
+            points.push({ angle: Math.atan2(y1, x1), index: i });
+        }
+        points.sort(function (a, b) { return a.angle - b.angle; });
+
+        // toss out duplicate angles
+        a = points[0].angle;
+        v = points[0].index;
+        u = 0;
+        for (i = 1; i < plen; ++i) {
+            j = points[i].index;
+            if (a == points[i].angle) {
+                // keep angle for point most distant from the reference
+                x1 = vertices[v][0] - vertices[h][0];
+                y1 = vertices[v][1] - vertices[h][1];
+                x2 = vertices[j][0] - vertices[h][0];
+                y2 = vertices[j][1] - vertices[h][1];
+                if ((x1 * x1 + y1 * y1) >= (x2 * x2 + y2 * y2)) {
+                    points[i].index = -1;
+                } else {
+                    points[u].index = -1;
+                    a = points[i].angle;
+                    u = i;
+                    v = j;
+                }
+            } else {
+                a = points[i].angle;
+                u = i;
+                v = j;
+            }
+        }
+
+        // initialize the stack
+        stack.push(h);
+        for (i = 0, j = 0; i < 2; ++j) {
+            if (points[j].index !== -1) {
+                stack.push(points[j].index);
+                i++;
+            }
+        }
+        sp = stack.length;
+
+        // do graham's scan
+        for (; j < plen; ++j) {
+            if (points[j].index === -1) continue; // skip tossed out points
+            while (!d3_geom_hullCCW(stack[sp - 2], stack[sp - 1], points[j].index, vertices)) {
+                --sp;
+            }
+            stack[sp++] = points[j].index;
+        }
+
+        // construct the hull
+        var poly = [];
+        for (i = 0; i < sp; ++i) {
+            poly.push(vertices[stack[i]]);
+        }
+        return poly;
+    }
+
+    // are three points in counter-clockwise order?
+    function d3_geom_hullCCW(i1, i2, i3, v) {
+        var t, a, b, c, d, e, f;
+        t = v[i1]; a = t[0]; b = t[1];
+        t = v[i2]; c = t[0]; d = t[1];
+        t = v[i3]; e = t[0]; f = t[1];
+        return ((f - b) * (c - a) - (d - b) * (e - a)) > 0;
+    }
+    // Note: requires coordinates to be counterclockwise and convex!
+    d3.geom.polygon = function (coordinates) {
+
+        coordinates.area = function () {
+            var i = 0,
+                n = coordinates.length,
+                a = coordinates[n - 1][0] * coordinates[0][1],
+                b = coordinates[n - 1][1] * coordinates[0][0];
+            while (++i < n) {
+                a += coordinates[i - 1][0] * coordinates[i][1];
+                b += coordinates[i - 1][1] * coordinates[i][0];
+            }
+            return (b - a) * .5;
+        };
+
+        coordinates.centroid = function (k) {
+            var i = -1,
+                n = coordinates.length - 1,
+                x = 0,
+                y = 0,
+                a,
+                b,
+                c;
+            if (!arguments.length) k = -1 / (6 * coordinates.area());
+            while (++i < n) {
+                a = coordinates[i];
+                b = coordinates[i + 1];
+                c = a[0] * b[1] - b[0] * a[1];
+                x += (a[0] + b[0]) * c;
+                y += (a[1] + b[1]) * c;
+            }
+            return [x * k, y * k];
+        };
+
+        // The Sutherland-Hodgman clipping algorithm.
+        coordinates.clip = function (subject) {
+            var input,
+                i = -1,
+                n = coordinates.length,
+                j,
+                m,
+                a = coordinates[n - 1],
+                b,
+                c,
+                d;
+            while (++i < n) {
+                input = subject.slice();
+                subject.length = 0;
+                b = coordinates[i];
+                c = input[(m = input.length) - 1];
+                j = -1;
+                while (++j < m) {
+                    d = input[j];
+                    if (d3_geom_polygonInside(d, a, b)) {
+                        if (!d3_geom_polygonInside(c, a, b)) {
+                            subject.push(d3_geom_polygonIntersect(c, d, a, b));
+                        }
+                        subject.push(d);
+                    } else if (d3_geom_polygonInside(c, a, b)) {
+                        subject.push(d3_geom_polygonIntersect(c, d, a, b));
+                    }
+                    c = d;
+                }
+                a = b;
+            }
+            return subject;
+        };
+
+        return coordinates;
+    };
+
+    function d3_geom_polygonInside(p, a, b) {
+        return (b[0] - a[0]) * (p[1] - a[1]) < (b[1] - a[1]) * (p[0] - a[0]);
+    }
+
+    // Intersect two infinite lines cd and ab.
+    function d3_geom_polygonIntersect(c, d, a, b) {
+        var x1 = c[0], x2 = d[0], x3 = a[0], x4 = b[0],
+            y1 = c[1], y2 = d[1], y3 = a[1], y4 = b[1],
+            x13 = x1 - x3,
+            x21 = x2 - x1,
+            x43 = x4 - x3,
+            y13 = y1 - y3,
+            y21 = y2 - y1,
+            y43 = y4 - y3,
+            ua = (x43 * y13 - y43 * x13) / (y43 * x21 - x43 * y21);
+        return [x1 + ua * x21, y1 + ua * y21];
+    }
+    // Adapted from Nicolas Garcia Belmonte's JIT implementation:
+    // http://blog.thejit.org/2010/02/12/voronoi-tessellation/
+    // http://blog.thejit.org/assets/voronoijs/voronoi.js
+    // See lib/jit/LICENSE for details.
+
+    // Notes:
+    //
+    // This implementation does not clip the returned polygons, so if you want to
+    // clip them to a particular shape you will need to do that either in SVG or by
+    // post-processing with d3.geom.polygon's clip method.
+    //
+    // If any vertices are coincident or have NaN positions, the behavior of this
+    // method is undefined. Most likely invalid polygons will be returned. You
+    // should filter invalid points, and consolidate coincident points, before
+    // computing the tessellation.
+
+    /**
+     * @param vertices [[x1, y1], [x2, y2], …]
+     * @returns polygons [[[x1, y1], [x2, y2], …], …]
+     */
+    d3.geom.voronoi = function (vertices) {
+        var polygons = vertices.map(function () { return []; });
+
+        d3_voronoi_tessellate(vertices, function (e) {
+            var s1,
+                s2,
+                x1,
+                x2,
+                y1,
+                y2;
+            if (e.a === 1 && e.b >= 0) {
+                s1 = e.ep.r;
+                s2 = e.ep.l;
+            } else {
+                s1 = e.ep.l;
+                s2 = e.ep.r;
+            }
+            if (e.a === 1) {
+                y1 = s1 ? s1.y : -1e6;
+                x1 = e.c - e.b * y1;
+                y2 = s2 ? s2.y : 1e6;
+                x2 = e.c - e.b * y2;
+            } else {
+                x1 = s1 ? s1.x : -1e6;
+                y1 = e.c - e.a * x1;
+                x2 = s2 ? s2.x : 1e6;
+                y2 = e.c - e.a * x2;
+            }
+            var v1 = [x1, y1],
+                v2 = [x2, y2];
+            polygons[e.region.l.index].push(v1, v2);
+            polygons[e.region.r.index].push(v1, v2);
+        });
+
+        // Reconnect the polygon segments into counterclockwise loops.
+        return polygons.map(function (polygon, i) {
+            var cx = vertices[i][0],
+                cy = vertices[i][1];
+            polygon.forEach(function (v) {
+                v.angle = Math.atan2(v[0] - cx, v[1] - cy);
+            });
+            return polygon.sort(function (a, b) {
+                return a.angle - b.angle;
+            }).filter(function (d, i) {
+                return !i || (d.angle - polygon[i - 1].angle > 1e-10);
+            });
+        });
+    };
+
+    var d3_voronoi_opposite = { "l": "r", "r": "l" };
+
+    function d3_voronoi_tessellate(vertices, callback) {
+
+        var Sites = {
+            list: vertices
+              .map(function (v, i) {
+                  return {
+                      index: i,
+                      x: v[0],
+                      y: v[1]
+                  };
+              })
+              .sort(function (a, b) {
+                  return a.y < b.y ? -1
+                    : a.y > b.y ? 1
+                    : a.x < b.x ? -1
+                    : a.x > b.x ? 1
+                    : 0;
+              }),
+            bottomSite: null
+        };
+
+        var EdgeList = {
+            list: [],
+            leftEnd: null,
+            rightEnd: null,
+
+            init: function () {
+                EdgeList.leftEnd = EdgeList.createHalfEdge(null, "l");
+                EdgeList.rightEnd = EdgeList.createHalfEdge(null, "l");
+                EdgeList.leftEnd.r = EdgeList.rightEnd;
+                EdgeList.rightEnd.l = EdgeList.leftEnd;
+                EdgeList.list.unshift(EdgeList.leftEnd, EdgeList.rightEnd);
+            },
+
+            createHalfEdge: function (edge, side) {
+                return {
+                    edge: edge,
+                    side: side,
+                    vertex: null,
+                    "l": null,
+                    "r": null
+                };
+            },
+
+            insert: function (lb, he) {
+                he.l = lb;
+                he.r = lb.r;
+                lb.r.l = he;
+                lb.r = he;
+            },
+
+            leftBound: function (p) {
+                var he = EdgeList.leftEnd;
+                do {
+                    he = he.r;
+                } while (he != EdgeList.rightEnd && Geom.rightOf(he, p));
+                he = he.l;
+                return he;
+            },
+
+            del: function (he) {
+                he.l.r = he.r;
+                he.r.l = he.l;
+                he.edge = null;
+            },
+
+            right: function (he) {
+                return he.r;
+            },
+
+            left: function (he) {
+                return he.l;
+            },
+
+            leftRegion: function (he) {
+                return he.edge == null
+                    ? Sites.bottomSite
+                    : he.edge.region[he.side];
+            },
+
+            rightRegion: function (he) {
+                return he.edge == null
+                    ? Sites.bottomSite
+                    : he.edge.region[d3_voronoi_opposite[he.side]];
+            }
+        };
+
+        var Geom = {
+
+            bisect: function (s1, s2) {
+                var newEdge = {
+                    region: { "l": s1, "r": s2 },
+                    ep: { "l": null, "r": null }
+                };
+
+                var dx = s2.x - s1.x,
+                    dy = s2.y - s1.y,
+                    adx = dx > 0 ? dx : -dx,
+                    ady = dy > 0 ? dy : -dy;
+
+                newEdge.c = s1.x * dx + s1.y * dy
+                    + (dx * dx + dy * dy) * .5;
+
+                if (adx > ady) {
+                    newEdge.a = 1;
+                    newEdge.b = dy / dx;
+                    newEdge.c /= dx;
+                } else {
+                    newEdge.b = 1;
+                    newEdge.a = dx / dy;
+                    newEdge.c /= dy;
+                }
+
+                return newEdge;
+            },
+
+            intersect: function (el1, el2) {
+                var e1 = el1.edge,
+                    e2 = el2.edge;
+                if (!e1 || !e2 || (e1.region.r == e2.region.r)) {
+                    return null;
+                }
+                var d = (e1.a * e2.b) - (e1.b * e2.a);
+                if (Math.abs(d) < 1e-10) {
+                    return null;
+                }
+                var xint = (e1.c * e2.b - e2.c * e1.b) / d,
+                    yint = (e2.c * e1.a - e1.c * e2.a) / d,
+                    e1r = e1.region.r,
+                    e2r = e2.region.r,
+                    el,
+                    e;
+                if ((e1r.y < e2r.y) ||
+                   (e1r.y == e2r.y && e1r.x < e2r.x)) {
+                    el = el1;
+                    e = e1;
+                } else {
+                    el = el2;
+                    e = e2;
+                }
+                var rightOfSite = (xint >= e.region.r.x);
+                if ((rightOfSite && (el.side === "l")) ||
+                  (!rightOfSite && (el.side === "r"))) {
+                    return null;
+                }
+                return {
+                    x: xint,
+                    y: yint
+                };
+            },
+
+            rightOf: function (he, p) {
+                var e = he.edge,
+                    topsite = e.region.r,
+                    rightOfSite = (p.x > topsite.x);
+
+                if (rightOfSite && (he.side === "l")) {
+                    return 1;
+                }
+                if (!rightOfSite && (he.side === "r")) {
+                    return 0;
+                }
+                if (e.a === 1) {
+                    var dyp = p.y - topsite.y,
+                        dxp = p.x - topsite.x,
+                        fast = 0,
+                        above = 0;
+
+                    if ((!rightOfSite && (e.b < 0)) ||
+                      (rightOfSite && (e.b >= 0))) {
+                        above = fast = (dyp >= e.b * dxp);
+                    } else {
+                        above = ((p.x + p.y * e.b) > e.c);
+                        if (e.b < 0) {
+                            above = !above;
+                        }
+                        if (!above) {
+                            fast = 1;
+                        }
+                    }
+                    if (!fast) {
+                        var dxs = topsite.x - e.region.l.x;
+                        above = (e.b * (dxp * dxp - dyp * dyp)) <
+                          (dxs * dyp * (1 + 2 * dxp / dxs + e.b * e.b));
+
+                        if (e.b < 0) {
+                            above = !above;
+                        }
+                    }
+                } else /* e.b == 1 */ {
+                    var yl = e.c - e.a * p.x,
+                        t1 = p.y - yl,
+                        t2 = p.x - topsite.x,
+                        t3 = yl - topsite.y;
+
+                    above = (t1 * t1) > (t2 * t2 + t3 * t3);
+                }
+                return he.side === "l" ? above : !above;
+            },
+
+            endPoint: function (edge, side, site) {
+                edge.ep[side] = site;
+                if (!edge.ep[d3_voronoi_opposite[side]]) return;
+                callback(edge);
+            },
+
+            distance: function (s, t) {
+                var dx = s.x - t.x,
+                    dy = s.y - t.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        };
+
+        var EventQueue = {
+            list: [],
+
+            insert: function (he, site, offset) {
+                he.vertex = site;
+                he.ystar = site.y + offset;
+                for (var i = 0, list = EventQueue.list, l = list.length; i < l; i++) {
+                    var next = list[i];
+                    if (he.ystar > next.ystar ||
+                      (he.ystar == next.ystar &&
+                      site.x > next.vertex.x)) {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+                list.splice(i, 0, he);
+            },
+
+            del: function (he) {
+                for (var i = 0, ls = EventQueue.list, l = ls.length; i < l && (ls[i] != he) ; ++i) { }
+                ls.splice(i, 1);
+            },
+
+            empty: function () { return EventQueue.list.length === 0; },
+
+            nextEvent: function (he) {
+                for (var i = 0, ls = EventQueue.list, l = ls.length; i < l; ++i) {
+                    if (ls[i] == he) return ls[i + 1];
+                }
+                return null;
+            },
+
+            min: function () {
+                var elem = EventQueue.list[0];
+                return {
+                    x: elem.vertex.x,
+                    y: elem.ystar
+                };
+            },
+
+            extractMin: function () {
+                return EventQueue.list.shift();
+            }
+        };
+
+        EdgeList.init();
+        Sites.bottomSite = Sites.list.shift();
+
+        var newSite = Sites.list.shift(), newIntStar;
+        var lbnd, rbnd, llbnd, rrbnd, bisector;
+        var bot, top, temp, p, v;
+        var e, pm;
+
+        while (true) {
+            if (!EventQueue.empty()) {
+                newIntStar = EventQueue.min();
+            }
+            if (newSite && (EventQueue.empty()
+              || newSite.y < newIntStar.y
+              || (newSite.y == newIntStar.y
+              && newSite.x < newIntStar.x))) { //new site is smallest
+                lbnd = EdgeList.leftBound(newSite);
+                rbnd = EdgeList.right(lbnd);
+                bot = EdgeList.rightRegion(lbnd);
+                e = Geom.bisect(bot, newSite);
+                bisector = EdgeList.createHalfEdge(e, "l");
+                EdgeList.insert(lbnd, bisector);
+                p = Geom.intersect(lbnd, bisector);
+                if (p) {
+                    EventQueue.del(lbnd);
+                    EventQueue.insert(lbnd, p, Geom.distance(p, newSite));
+                }
+                lbnd = bisector;
+                bisector = EdgeList.createHalfEdge(e, "r");
+                EdgeList.insert(lbnd, bisector);
+                p = Geom.intersect(bisector, rbnd);
+                if (p) {
+                    EventQueue.insert(bisector, p, Geom.distance(p, newSite));
+                }
+                newSite = Sites.list.shift();
+            } else if (!EventQueue.empty()) { //intersection is smallest
+                lbnd = EventQueue.extractMin();
+                llbnd = EdgeList.left(lbnd);
+                rbnd = EdgeList.right(lbnd);
+                rrbnd = EdgeList.right(rbnd);
+                bot = EdgeList.leftRegion(lbnd);
+                top = EdgeList.rightRegion(rbnd);
+                v = lbnd.vertex;
+                Geom.endPoint(lbnd.edge, lbnd.side, v);
+                Geom.endPoint(rbnd.edge, rbnd.side, v);
+                EdgeList.del(lbnd);
+                EventQueue.del(rbnd);
+                EdgeList.del(rbnd);
+                pm = "l";
+                if (bot.y > top.y) {
+                    temp = bot;
+                    bot = top;
+                    top = temp;
+                    pm = "r";
+                }
+                e = Geom.bisect(bot, top);
+                bisector = EdgeList.createHalfEdge(e, pm);
+                EdgeList.insert(llbnd, bisector);
+                Geom.endPoint(e, d3_voronoi_opposite[pm], v);
+                p = Geom.intersect(llbnd, bisector);
+                if (p) {
+                    EventQueue.del(llbnd);
+                    EventQueue.insert(llbnd, p, Geom.distance(p, bot));
+                }
+                p = Geom.intersect(bisector, rrbnd);
+                if (p) {
+                    EventQueue.insert(bisector, p, Geom.distance(p, bot));
+                }
+            } else {
+                break;
+            }
+        }//end while
+
+        for (lbnd = EdgeList.right(EdgeList.leftEnd) ;
+            lbnd != EdgeList.rightEnd;
+            lbnd = EdgeList.right(lbnd)) {
+            callback(lbnd.edge);
+        }
+    }
+    /**
+    * @param vertices [[x1, y1], [x2, y2], …]
+    * @returns triangles [[[x1, y1], [x2, y2], [x3, y3]], …]
+     */
+    d3.geom.delaunay = function (vertices) {
+        var edges = vertices.map(function () { return []; }),
+            triangles = [];
+
+        // Use the Voronoi tessellation to determine Delaunay edges.
+        d3_voronoi_tessellate(vertices, function (e) {
+            edges[e.region.l.index].push(vertices[e.region.r.index]);
+        });
+
+        // Reconnect the edges into counterclockwise triangles.
+        edges.forEach(function (edge, i) {
+            var v = vertices[i],
+                cx = v[0],
+                cy = v[1];
+            edge.forEach(function (v) {
+                v.angle = Math.atan2(v[0] - cx, v[1] - cy);
+            });
+            edge.sort(function (a, b) {
+                return a.angle - b.angle;
+            });
+            for (var j = 0, m = edge.length - 1; j < m; j++) {
+                triangles.push([v, edge[j], edge[j + 1]]);
+            }
+        });
+
+        return triangles;
+    };
+    // Constructs a new quadtree for the specified array of points. A quadtree is a
+    // two-dimensional recursive spatial subdivision. This implementation uses
+    // square partitions, dividing each square into four equally-sized squares. Each
+    // point exists in a unique node; if multiple points are in the same position,
+    // some points may be stored on internal nodes rather than leaf nodes. Quadtrees
+    // can be used to accelerate various spatial operations, such as the Barnes-Hut
+    // approximation for computing n-body forces, or collision detection.
+    d3.geom.quadtree = function (points, x1, y1, x2, y2) {
+        var p,
+            i = -1,
+            n = points.length;
+
+        // Type conversion for deprecated API.
+        if (n && isNaN(points[0].x)) points = points.map(d3_geom_quadtreePoint);
+
+        // Allow bounds to be specified explicitly.
+        if (arguments.length < 5) {
+            if (arguments.length === 3) {
+                y2 = x2 = y1;
+                y1 = x1;
+            } else {
+                x1 = y1 = Infinity;
+                x2 = y2 = -Infinity;
+
+                // Compute bounds.
+                while (++i < n) {
+                    p = points[i];
+                    if (p.x < x1) x1 = p.x;
+                    if (p.y < y1) y1 = p.y;
+                    if (p.x > x2) x2 = p.x;
+                    if (p.y > y2) y2 = p.y;
+                }
+
+                // Squarify the bounds.
+                var dx = x2 - x1,
+                    dy = y2 - y1;
+                if (dx > dy) y2 = y1 + dx;
+                else x2 = x1 + dy;
+            }
+        }
+
+        // Recursively inserts the specified point p at the node n or one of its
+        // descendants. The bounds are defined by [x1, x2] and [y1, y2].
+        function insert(n, p, x1, y1, x2, y2) {
+            if (isNaN(p.x) || isNaN(p.y)) return; // ignore invalid points
+            if (n.leaf) {
+                var v = n.point;
+                if (v) {
+                    // If the point at this leaf node is at the same position as the new
+                    // point we are adding, we leave the point associated with the
+                    // internal node while adding the new point to a child node. This
+                    // avoids infinite recursion.
+                    if ((Math.abs(v.x - p.x) + Math.abs(v.y - p.y)) < .01) {
+                        insertChild(n, p, x1, y1, x2, y2);
+                    } else {
+                        n.point = null;
+                        insertChild(n, v, x1, y1, x2, y2);
+                        insertChild(n, p, x1, y1, x2, y2);
+                    }
+                } else {
+                    n.point = p;
+                }
+            } else {
+                insertChild(n, p, x1, y1, x2, y2);
+            }
+        }
+
+        // Recursively inserts the specified point p into a descendant of node n. The
+        // bounds are defined by [x1, x2] and [y1, y2].
+        function insertChild(n, p, x1, y1, x2, y2) {
+            // Compute the split point, and the quadrant in which to insert p.
+            var sx = (x1 + x2) * .5,
+                sy = (y1 + y2) * .5,
+                right = p.x >= sx,
+                bottom = p.y >= sy,
+                i = (bottom << 1) + right;
+
+            // Recursively insert into the child node.
+            n.leaf = false;
+            n = n.nodes[i] || (n.nodes[i] = d3_geom_quadtreeNode());
+
+            // Update the bounds as we recurse.
+            if (right) x1 = sx; else x2 = sx;
+            if (bottom) y1 = sy; else y2 = sy;
+            insert(n, p, x1, y1, x2, y2);
+        }
+
+        // Create the root node.
+        var root = d3_geom_quadtreeNode();
+
+        root.add = function (p) {
+            insert(root, p, x1, y1, x2, y2);
+        };
+
+        root.visit = function (f) {
+            d3_geom_quadtreeVisit(f, root, x1, y1, x2, y2);
+        };
+
+        // Insert all points.
+        points.forEach(root.add);
+        return root;
+    };
+
+    function d3_geom_quadtreeNode() {
+        return {
+            leaf: true,
+            nodes: [],
+            point: null
+        };
+    }
+
+    function d3_geom_quadtreeVisit(f, node, x1, y1, x2, y2) {
+        if (!f(node, x1, y1, x2, y2)) {
+            var sx = (x1 + x2) * .5,
+                sy = (y1 + y2) * .5,
+                children = node.nodes;
+            if (children[0]) d3_geom_quadtreeVisit(f, children[0], x1, y1, sx, sy);
+            if (children[1]) d3_geom_quadtreeVisit(f, children[1], sx, y1, x2, sy);
+            if (children[2]) d3_geom_quadtreeVisit(f, children[2], x1, sy, sx, y2);
+            if (children[3]) d3_geom_quadtreeVisit(f, children[3], sx, sy, x2, y2);
+        }
+    }
+
+    function d3_geom_quadtreePoint(p) {
+        return {
+            x: p[0],
+            y: p[1]
+        };
+    }
+})();

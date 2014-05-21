@@ -95,9 +95,10 @@ rect {
 
  /* Form wrapper styling */
 .search-wrapper {
-width: 220px;
+width: 300px;
+padding: 40px;
 margin: 45px auto 50px auto;
-box-shadow: 0 1px 1px rgba(0, 0, 0, .4) inset, 0 1px 0 rgba(255, 255, 255, .2);
+/*box-shadow: 0 1px 1px rgba(0, 0, 0, .4) inset, 0 1px 0 rgba(255, 255, 255, .2);*/
 }
  
 /* Form text input */
@@ -213,7 +214,7 @@ text-shadow: 0 -1px 0 rgba(0, 0, 0, .3);
 }
 /*/////////////////////////////////////*/
 .homebody { 
-    width: 80%; 
+    width: 100%; 
     background-color: #C8C8C8;
     border-radius: 20px;
     height: 90%;
@@ -241,7 +242,6 @@ text-shadow: 0 -1px 0 rgba(0, 0, 0, .3);
     }
 
     circle {
-        fill: #ccc;
         stroke: #333;
         stroke-width: 1.5px;
     }
@@ -256,4 +256,9 @@ text-shadow: 0 -1px 0 rgba(0, 0, 0, .3);
     }
     .vis {
         cursor:pointer;
+    }
+
+    .mySlider {
+        padding: 40px;
+        margin: 45px auto 50px auto;
     }

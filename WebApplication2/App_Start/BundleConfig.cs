@@ -40,11 +40,21 @@ namespace WebApplication2
                 "~/Scripts/respond.js"));
 
             bundles.Add(new ScriptBundle("~/bundles/ui").Include(
-                 "~/Scripts/d3/d3.js",
-                 "~/Scripts/d3/d3.min.js",
+                 "~/Scripts/d3/d3.*",
+                 //"~/Scripts/d3/d3.min.js",
                  "~/Scripts/d3/cloud.js",
                  "~/Scripts/JQRangeSlider/jQ*",
-                 "~/Scripts/JQueryUI/jquery-ui*"));
+                 "~/Scripts/JQueryUI/jquery-ui*",
+                 "~/Scripts/loopjSlider/simple-*",
+                 "~/Scripts/bootstrap/bootstrap.js",
+                 "~/Scripts/movieVis/actorscript.js",
+                 "~/Scripts/movieVis/actorviz.js",
+                // "~/Scripts/movieVis/linechart.js",
+                 "~/Scripts/movieVis/moviescript.js",
+                 "~/Scripts/movieVis/movieviz.js",
+                 "~/Scripts/movieVis/plugins.js",
+                 "~/Scripts/movieVis/CustomTooltip.js"
+                 ));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
                  "~/Content/bootstrap.css",
@@ -54,7 +64,12 @@ namespace WebApplication2
                  "~/Content/JQRangeSlider/iThing-min.css",
                  "~/Content/JQRangeSlider/iThing.css",
                  "~/Content/JQueryUI/jquery-ui-1.10.1.custom.css",
-                 "~/Content/JQueryUI/jquery-ui-1.10.1.custom.min.css"));
+                 "~/Content/JQueryUI/jquery-ui-1.10.1.custom.min.css",
+                 "~/Content/loopjSlider/simple-*",
+                 "~/Content/movieVis/bootstrap*",
+                 "~/Content/movieVis/reset.css",
+                 "~/Content/movieVis/style.css"
+                 ));
             
         }
     }

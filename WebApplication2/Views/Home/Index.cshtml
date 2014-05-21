@@ -12,8 +12,6 @@
 </head>
 <body>
     <div id="body" class="homebody">
-        <div id="slider" style="width:800px; margin-left:20px;"></div>
-
         <div class="search-wrapper cf">
             <input id="search" type="text" placeholder="Search here..." required="">
             <button id="sb">Search</button>
@@ -24,7 +22,7 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
-
+            
             $("#search").keyup(function (event) {
                 if (event.keyCode == 13) {
                     $("#sb").click();
@@ -61,57 +59,6 @@
                     }
                 });
             });
-
-            $(function () {
-                $("#datepicker").datepicker();
-            });
-
-            var today = new Date();
-            var dd = today.getDate();
-            var mm = today.getMonth() + 1; //January is 0!
-            var yyyy = today.getFullYear();
-            //$("#slider").dateRangeSlider();
-            $("#slider").dateRangeSlider({
-                formatter: function (val) {
-                    var year = val.getFullYear();
-                    return year;
-                }
-            });
-            $("#slider").dateRangeSlider("bounds", new Date(1900, 0, 1), today);
-            $("#slider").dateRangeSlider("values", new Date(1990, 0, 1), today);
-
-            $("#slider").bind("valuesChanged", function (e, data) {
-                console.log("Values just changed. min: " + data.values.min + " max: " + data.values.max);
-                console.log(data.values);
-                $.ajax({
-                    type: "POST",
-                    url: "/Home/SetTimeline",
-                    data: {
-                        min: data.values.min.getFullYear(),
-                        max: data.values.max.getFullYear()
-                    },
-                    success: function (movies) {
-                        console.log(movies);
-                    },
-                    
-                    error: function (req, status, error) {
-                        
-                    }
-                });
-            });
-
-           /* var data = [4, 8, 15, 16, 23, 42];
-
-            var x = d3.scale.linear()
-                .domain([0, d3.max(data)])
-                .range([0, 420]);
-
-            d3.select(".chart")
-              .selectAll("div")
-                .data(data)
-              .enter().append("div")
-                .style("width", function (d) { return x(d) + "px"; })
-                .text(function (d) { return d; });*/
         });
     </script>
 </body>

@@ -1,0 +1,78 @@
+﻿@{
+    Response.Headers["X-UA-Compatible"] = "IE=10";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Most popular actors</title>
+    <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+    <meta name="viewport" content="width=device-width" />
+
+</head>
+<body>
+    <div id="body" class="homebody">
+        <label id="yrcont" class="ui-rangeSlider-label ui-rangeSlider-leftLabel shandle"  style="align-self:center">
+            <label id="yr" class="ui-rangeSlider-label-value shandle"></label>
+        </label>
+        <input id="slide" class="mySlider" style="padding: 45px;" type="text" data-slider="true" data-slider-theme="volume" data-slider-range="1900,2014" data-slider-step="1">
+
+    </div>
+    
+        
+    <script type="text/javascript">
+        $(document).ready(function () {
+            
+            $(".dragger").attr("id", "drag");
+            $("#yr").text($("#slide").val());
+            $("#drag").attr("class", "ui-rangeSlider-label ui-rangeSlider-leftLabel");
+            $("#drag").addClass("shabdle");
+            $("#yrcont").appendTo($("#drag"));
+            $("#slide").bind("slider:changed", function (event, data) {
+                $("#yr").text(data.value);
+            });
+            $("#drag").on('mouseup',
+                function () {
+                    console.log("in");
+                    $.ajax({
+                        type: "POST",
+                        url: "/Home/SetTimelineActors",
+                        data: {
+                            min: $("#slide").val(),
+                            max: $("#slide").val()
+                        },
+                        success: function (movies) {
+                            console.log(movies);
+                        },
+
+                        error: function (req, status, error) {
+
+                        }
+                    });
+                }
+            );
+            $("#yrcont").on('mouseup',
+                function () { $("#drag").mouseup();});
+        });
+        $('#actor_view_selection a').click(function () {
+            var view_type = $(this).attr('id');
+            $('#actor_view_selection a').removeClass('active');
+            $(this).toggleClass('active');
+            //if($(this).attr('id') == "actorProgress")
+
+            custom_bubble_chart.toggle_view(view_type);
+            return false;
+        });
+
+        $('#view_selection a').click(function () {
+            var view_type = $(this).attr('id');
+            $('#view_selection a').removeClass('active');
+            $(this).toggleClass('active');
+            if ($(this).attr('id') != 'Actor')
+                $(location).attr('href', "index.html");
+            return false;
+        });
+    </script>
+</body>
+
+</html>
