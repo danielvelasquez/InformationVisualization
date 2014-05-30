@@ -24,9 +24,26 @@
     <div id="vis"></div>
     <script type="text/javascript">
         $(document).ready(function () {
+
             function fill_color(cat) {
-                var res;
-                if (cat == 7) {
+                
+                //var res;
+                var color = d3.scale.linear()
+                .domain([7, 9])
+                .range(["white", "green"])
+                .interpolate(d3.interpolateRgb);
+                var normal_color = function (d) {
+                    return color(d);
+                };
+                var res = normal_color(cat);
+
+                /*color(-1)   // "#ff0000" red
+                color(-0.5) // "#ff8080" pinkish
+                color(0)    // "#ffffff" white
+                color(0.5)  // "#80c080" getting greener
+                color(0.7)  // "#4da64d" almost there..
+                color(1)    // "#008000" totally green!
+                /*if (cat == 7) {
                     console.log("in2");
                     res ="#d84b2a";
                 } else if (cat == 8) {
@@ -35,7 +52,7 @@
                 } else {
                     console.log("in4");
                     res = "#7aa25c";
-                }
+                }*/
                 return res;
             }
             $(function () {
@@ -181,7 +198,7 @@
 
                                 circles.enter().append("circle")
                                   .attr("r", 0)
-                                  .attr("fill", function (d) { return fill_color(d.cat); })
+                                  .attr("fill", function (d) { return fill_color(d.rate); })
                                   .attr("stroke-width", 2)
                                   .attr("stroke", function (d) { return d3.rgb(fill_color(d.cat)).darker(); })
                                   .attr("id", function (d) { return "bubble_" + d.id; })
@@ -281,7 +298,7 @@
                                         destination.y = height / 2;
                                     if (d.cat == "9")
                                         destination.y = height / 3;
-                                    destination.x = ((d.year - 1920) * width) / 100;
+                                    destination.x = ((d.year - 1960)  * width) / 60;
 
                                     d.x = d.x + (destination.x - d.x) * (damper + 0.02) * alpha * 1.1;
                                     d.y = d.y + (destination.y - d.y) * (damper + 0.02) * alpha * 1.1;
@@ -333,7 +350,7 @@
                                     .tickFormat("")
                                     .orient("right");
 
-                                var xAxisGrid = xAxis.ticks(10)
+                                var xAxisGrid = xAxis.ticks(7)
                                     .tickSize(-height + 5, 0)
                                     .tickFormat("")
                                     .orient("top");
@@ -348,7 +365,7 @@
                                     .classed('grid', true)
                                     .call(xAxisGrid);
 
-                                var years_x = { "1930": width / 10, "1940": width / 5, "1950": 3 * width / 10, "1960": 2 * width / 5, "1970": width / 2, "1980": 3 * width / 5, "1990": 7 * width / 10, "2000": 4 * width / 5, "2010": 9 * width / 10, "2020": width };
+                                var years_x = { "1960":  0, "1970": width / 6, "1980": 2 * width /6, "1990": 3 * width / 6, "2000": 4 * width / 6, "2010": 5 * width / 6, "2020": width };
                                 var years_data = d3.keys(years_x);
                                 var years = vis.selectAll(".axisyears")
                                          .data(years_data);
@@ -405,7 +422,7 @@
 
                                 d3.select(element).attr("stroke", "black");
                                 var rate, n, f;
-                                rate = 6.6;
+                                rate = data.rate;// 6.6;
                                 n = Math.floor(rate);
                                 f = rate - n;
                                 var pathStarOn = "../Content/movieVis/Images/star-on.png";
@@ -415,7 +432,7 @@
                                 content += "<div class='tooltipcontent'><span class=\"value\"> " + data.title + "</span><br/>";
                                 content += "<span class=\"value\"> " + data.year + "</span><br/>";
                                 content += "<span class=\"value\"> " + data.rate + "/10</span><br/>";
-                                for (var i = 0; i < n; i++)
+                                /*for (var i = 0; i < n; i++)
                                     content += "<img src="+pathStarOn+" alt='star' height='10' width='10'>";
                                 if (f > 0) {
                                     content += "<img src=" + pathStarHalf + " alt='star' height='10' width='10'>";
@@ -423,6 +440,17 @@
                                 }
                                 for (var i = 0; i < (10 - n - f) ; i++)
                                     content += "<img src=" + pathStarOff + " alt='star' height='10' width='10'>";
+                                */
+                                for (var i = 0; i < 10;i++){
+                                    if (rate > i && rate > i+1) {
+                                        content += "<img src=" + pathStarOn + " alt='star' height='10' width='10'>";
+                                    } else if (rate > i) {
+                                        content += "<img src=" + pathStarHalf + " alt='star' height='10' width='10'>";
+                                    } else {
+                                        content += "<img src=" + pathStarOff + " alt='star' height='10' width='10'>";
+
+                                    }
+                                }
                                 content += "<br/><span style='color:red' class=\"value\"> " + data.value + " votes</span></div>";
                                 tooltip.showTooltip(content, d3.event);
                                 $("#gates_tooltip").removeClass("hidden");

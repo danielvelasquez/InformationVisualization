@@ -39,7 +39,8 @@ namespace WebApplication2.Controllers
             Node root = new Node("root", movie.Title, null);
             root._children = null;
             List<int> NodeIds = new List<int>();
-            foreach (Cast member in movie.Credits.Cast)
+            var first15 = movie.Credits.Cast.Count > 15 ? movie.Credits.Cast.GetRange(0, 14) : movie.Credits.Cast;
+            foreach (Cast member in first15)
             {
                 Node child = new Node("primary", member.Name, null);
                 child._children = null;
@@ -62,7 +63,8 @@ namespace WebApplication2.Controllers
             Node root = new Node("root", movie.Title, null);
             root._children = null;
             List<int> NodeIds = new List<int>();
-            foreach (Crew member in movie.Credits.Crew)
+            var first15 = movie.Credits.Crew.Count > 15 ? movie.Credits.Crew.GetRange(0, 14) : movie.Credits.Crew;
+            foreach (Crew member in first15)
             {
                 Node child = new Node("primary", member.Name, null);
                 child._children = null;
@@ -89,9 +91,7 @@ namespace WebApplication2.Controllers
             result.Results = new List<SearchMovie>();
 
             result = client.DiscoverMovies(page: 1, sortBy: DiscoverMovieSortBy.PopularityDescending, releaseDateGreaterThan: new DateTime(min, 1, 1), releaseDateLessThan: new DateTime(max, 12, 31));
-            var surprise = client.GetMovie(4652, MovieMethods.Credits);
-
-            for (int cont = 2; cont <= 15 && cont <= result.TotalPages; cont++)
+            for (int cont = 2; cont <= 40 && cont <= result.TotalPages; cont++)
             {
                 result.Results.InsertRange(0, client.DiscoverMovies(page: cont, sortBy: DiscoverMovieSortBy.PopularityDescending, releaseDateGreaterThan: new DateTime(min, 1, 1), releaseDateLessThan: new DateTime(max, 12, 31)).Results);
             }
@@ -119,11 +119,11 @@ namespace WebApplication2.Controllers
         }
         private static bool NotWellRated(SearchMovie m)
         {
-            return m.VoteCount<200 || m.VoteAverage < 7;
+            return m.VoteAverage < 7 || (m.Popularity < 20 && m.VoteAverage < 7) || (m.Popularity < 10 && m.VoteAverage < 8);
         }
         private static bool NotSoWellRated(SearchMovie m)
         {
-            return m.VoteCount < 500 || m.VoteAverage < 7;
+            return  m.VoteCount < 500 || m.VoteAverage < 7;
         }
         private static bool DirectorsInMovie(Crew c)
         {

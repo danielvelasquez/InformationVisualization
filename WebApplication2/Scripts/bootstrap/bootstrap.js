@@ -35,8 +35,8 @@
         end: (function () {
           var transitionEnd = "TransitionEnd"
           //if ( $.browser.webkit ) {
-          transitionEnd = "webkitTransitionEnd"
-          //transitionEnd = "transitionend"
+          //transitionEnd = "webkitTransitionEnd"
+          transitionEnd = "transitionend"
           /*} else if ( $.browser.mozilla ) {
           	transitionEnd = "transitionend"
           } else if ( $.browser.opera ) {

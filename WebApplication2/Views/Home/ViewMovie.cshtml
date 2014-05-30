@@ -57,8 +57,8 @@
         function showCast(){
             var root;
             root = @Html.Raw(Json.Encode(Model.root));
-            var w = 1200,
-                h = 800,
+            var w = 1250,
+                h = 900,
                 maxNodeSize = 50;
             var vis;
             var force = d3.layout.force();
@@ -165,14 +165,6 @@
                     .text(function(d) { return d.name; });
 
 
-                //Add an image to the node (if any)
-                /*nodeEnter.append("svg:image")
-                        .attr("xlink:href",  function(d) { return d.logo;})
-                        .attr("x", function(d) { return (0);})
-                        .attr("y", function(d) { return (0 - (d.logoheight/2)) || -16;})
-                        .attr("height", function(d) { return d.logoheight || 16;})
-                        .attr("width", function(d) { return d.logowidth || 16;});
-                */
                 // Exit any old nodes.
                 node.exit().remove();
                 // Re-select for update.
@@ -437,7 +429,7 @@
             $(".primary").d3Click();
         }
         /**
-             * Color leaf nodes orange, and packages white or blue.
+             * Color nodes according to the rule.
              */
         function color(d) {
             var c;
